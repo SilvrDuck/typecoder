@@ -99,6 +99,7 @@ export function TypingSurface({ state, onChange, onComplete, disabled }: Props) 
       />
       <pre
         className="whitespace-pre-wrap break-words m-0 p-0"
+        style={{ tabSize: 2 }}
         aria-live="polite"
         aria-atomic="false"
       >
@@ -167,9 +168,11 @@ function Caret() {
 
 function TrailingCaret() {
   return (
-    <span className="relative inline-block w-0 h-[1.2em] align-baseline">
-      <Caret />
-    </span>
+    <span
+      aria-hidden="true"
+      data-testid="trailing-caret"
+      className="inline-block w-[2px] h-[1.2em] bg-accent align-text-bottom animate-caret"
+    />
   );
 }
 
@@ -202,27 +205,25 @@ function renderCell(
   typed: string | undefined,
   status: CharStatus,
 ): React.ReactNode {
-  if (status === "pending") {
-    if (expected === "\t") return "  ";
+  if (status === "pending" || status === "correct") {
+    // Real \t and \n; <pre style={{tabSize: 2}}> renders them consistently.
     return expected ?? "";
   }
-  if (status === "correct") {
-    return expected ?? "";
-  }
-  // wrong | extra → show what the user typed
-  if (typed === undefined) return expected ?? "";
-
-  const glyph = whitespaceGlyph(typed);
-
+  // wrong | extra → show what the user typed. typed is always defined for
+  // these statuses (cell only exists because input[i] exists).
+  const t = typed ?? "";
+  const glyph = whitespaceGlyph(t);
   if (expected === "\n") {
+    // Wrong cell where target wanted a line break: emit the glyph for the
+    // wrong char, then "\n" so the rendered layout still breaks here.
     return (
       <>
-        {glyph ?? typed}
+        {glyph ?? t}
         {"\n"}
       </>
     );
   }
-  return glyph ?? typed;
+  return glyph ?? t;
 }
 
 function whitespaceGlyph(ch: string): React.ReactNode | null {

@@ -65,6 +65,43 @@ describe("TypingSurface", () => {
     expect(wrongCell!.textContent).toContain("·");
   });
 
+  it("renders extra cells past target with the typed char in red", () => {
+    let state = startTyping("ab");
+    state = applyKey(state, "a", { now: 1 });
+    state = applyKey(state, "b", { now: 2 });
+    state = applyKey(state, "c", { now: 3 }); // extra char past target
+    render(
+      <TypingSurface state={state} onChange={() => {}} onComplete={() => {}} />,
+    );
+    const surface = screen.getByTestId("typing-surface");
+    const extraCell = surface.querySelector('[data-status="extra"]');
+    expect(extraCell).toBeTruthy();
+    expect(extraCell!.textContent).toBe("c");
+  });
+
+  it("shows ↵ glyph when user typed Enter on a non-newline target", () => {
+    let state = startTyping("ab\nc");
+    state = applyKey(state, "Enter", { now: 1 }); // wrong: expected 'a', typed '\n'
+    render(
+      <TypingSurface state={state} onChange={() => {}} onComplete={() => {}} />,
+    );
+    const surface = screen.getByTestId("typing-surface");
+    const wrongCell = surface.querySelector('[data-status="wrong"]');
+    expect(wrongCell).toBeTruthy();
+    expect(wrongCell!.textContent).toContain("↵");
+  });
+
+  it("shows trailing caret when input fills target but has errors", () => {
+    let state = startTyping("cat");
+    state = applyKey(state, "c", { now: 1 });
+    state = applyKey(state, "x", { now: 2 }); // wrong middle
+    state = applyKey(state, "t", { now: 3 }); // cursor now at end, not complete
+    render(
+      <TypingSurface state={state} onChange={() => {}} onComplete={() => {}} />,
+    );
+    expect(screen.getByTestId("trailing-caret")).toBeInTheDocument();
+  });
+
   it("blocks Tab default behavior", () => {
     const state = startTyping("\tfoo");
     const onChange = vi.fn();
