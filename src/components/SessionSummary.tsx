@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Mark } from "./Mark";
 import { Panel, Pill, Label } from "./Panel";
 import { Button } from "./Button";
+import { HotkeyHints } from "./HotkeyHints";
 import { useAppStore } from "@/state/useAppStore";
 import {
   summarizeWeakSpots,
@@ -94,7 +95,7 @@ export function SessionSummary() {
     startSession(weakSpotConfig, resolved, `${session.source} — weak spots`);
   }
 
-  function restartSession() {
+  const restartSession = useCallback(() => {
     if (!session) return;
     startSession(
       session.config,
@@ -108,11 +109,31 @@ export function SessionSummary() {
       },
       session.source,
     );
-  }
+  }, [session, startSession]);
 
-  function newSession() {
+  const newSession = useCallback(() => {
     resetAll();
-  }
+  }, [resetAll]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        navigate({ name: "landing" });
+      } else if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        restartSession();
+      } else if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        newSession();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [navigate, restartSession, newSession]);
 
   return (
     <main className="min-h-screen px-6 py-12">
@@ -201,7 +222,16 @@ export function SessionSummary() {
           </Button>
         </div>
 
-        <p className="font-mono text-2xs text-ink-500 mt-8 tracking-wider">
+        <HotkeyHints
+          className="mt-8"
+          hints={[
+            { keys: ["R"], label: "restart" },
+            { keys: ["N"], label: "new" },
+            { keys: ["Esc"], label: "home" },
+          ]}
+        />
+
+        <p className="font-mono text-2xs text-ink-500 mt-6 tracking-wider">
           state lives in the URL — copy the link to come back later <Pill>stateless</Pill>
         </p>
       </div>

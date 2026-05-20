@@ -23,9 +23,11 @@ export function CompletionCard({ state, onNext, onRestart, hasNext }: Props) {
       <div className="flex gap-2">
         <Button intent="primary" mono onClick={onNext} data-testid="completion-next">
           {hasNext ? "Next" : "Finish"}
+          <span className="opacity-60 ml-2 text-2xs">Tab</span>
         </Button>
         <Button mono onClick={onRestart}>
           Restart
+          <span className="opacity-40 ml-2 text-2xs">⌘↵</span>
         </Button>
       </div>
     </Panel>

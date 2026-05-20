@@ -4,6 +4,8 @@ import { Panel } from "./Panel";
 import { LoadAnyRepoBody } from "./LoadAnyRepo";
 import { PasteConfigBody } from "./PasteConfig";
 import { PromptBuilderBody } from "./PromptBuilder";
+import { HotkeyHints } from "./HotkeyHints";
+import { useEscapeBack } from "@/hooks/useEscapeBack";
 
 /**
  * Custom-session hub. Single page with all three flows:
@@ -15,6 +17,7 @@ import { PromptBuilderBody } from "./PromptBuilder";
  */
 export function CustomHub() {
   const [showBuilder, setShowBuilder] = useState(false);
+  useEscapeBack();
 
   return (
     <main className="min-h-screen px-6 py-12">
@@ -72,6 +75,11 @@ export function CustomHub() {
             </Panel>
           )}
         </div>
+
+        <HotkeyHints
+          className="mt-10"
+          hints={[{ keys: ["Esc"], label: "back" }]}
+        />
       </div>
     </main>
   );
