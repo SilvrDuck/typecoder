@@ -266,13 +266,10 @@ function handleSpace(state: TypingState, now: number): TypingState {
     });
   }
 
-  let nextInput = state.input + filler;
-  let nextCursor = skipTo;
-  // Consume one trailing literal space (a real user keystroke — NOT free).
-  if (state.target[skipTo] === " ") {
-    nextInput += " ";
-    nextCursor = skipTo + 1;
-  }
+  // target[skipTo] === " " is guaranteed by the boundary guard above.
+  // Consume that literal space as a real user keystroke (NOT free).
+  const nextInput = state.input + filler + " ";
+  const nextCursor = skipTo + 1;
 
   const next: TypingState = {
     ...state,
