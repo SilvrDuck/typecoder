@@ -1,7 +1,20 @@
+import { useEffect } from "react";
 import { Mark } from "./Mark";
 import { Panel } from "./Panel";
+import { useAppStore } from "@/state/useAppStore";
 
 export function LoadingScreen({ title }: { title: string }) {
+  const navigate = useAppStore((s) => s.navigate);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        navigate({ name: "landing" });
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [navigate]);
   return (
     <main className="min-h-screen px-6 py-12">
       <div className="max-w-xl mx-auto">

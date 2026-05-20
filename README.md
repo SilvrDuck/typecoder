@@ -81,7 +81,11 @@ The typing screen is the product. It has no sidebar, no repo browser, no config 
 - Smart Enter auto-skips leading indentation on the next line.
 - Smart Tab consumes a target whitespace run instead of inserting a literal tab.
 - Ctrl/Meta-Backspace deletes a word; Alt-Backspace deletes a token.
-- Esc returns to landing.
+- Tab advances to the next item once the current snippet is complete;
+  Shift+Tab returns to the previous item.
+- Ctrl/Meta-Enter restarts the current item.
+- Esc returns to landing (and dismisses the skip-confirmation overlay
+  before any view change).
 
 Stats are honest: a single Tab that consumes 4 spaces does not count as 4 keystrokes toward your WPM denominator.
 
