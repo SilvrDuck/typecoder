@@ -23,7 +23,7 @@ export function SessionSummary() {
     let accAvg = 0;
     let mistakes = 0;
     for (const r of results) {
-      const m = calculateMetrics(r.state, r.state.completedAt ?? Date.now());
+      const m = r.restoredMetrics ?? calculateMetrics(r.state, r.state.completedAt ?? Date.now());
       if (m.codeWpm > 0) {
         codeWpmSum += m.codeWpm;
         codeWpmCount++;

@@ -1,4 +1,5 @@
 import type { TypingState, TypingMistake } from "./typingEngine";
+import type { TypingMetrics } from "./metrics";
 
 export type WeakSpotReport = {
   hardestChars: Array<{ char: string; count: number }>;
@@ -10,6 +11,13 @@ export type SnippetResult = {
   state: TypingState;
   label: string;
   path?: string;
+  /**
+   * When a session is restored from a URL, the per-character mistake
+   * data is lost — we only have the summary numbers. Setting this lets
+   * SessionSummary skip `calculateMetrics(state)` and use these values
+   * directly. Live (un-restored) results leave this undefined.
+   */
+  restoredMetrics?: TypingMetrics;
 };
 
 /**
