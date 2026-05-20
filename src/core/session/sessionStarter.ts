@@ -34,11 +34,24 @@ export async function startCuratedSession(
   const resolved = await resolveConfig(config, client.fetchFileContent);
   if (resolved.items.length === 0) {
     const err = resolved.errors[0];
-    useAppStore.getState().navigate({
-      name: "error",
-      title: "Could not start session",
-      detail: err?.message ?? "No items resolved.",
-    });
+    const kind = err?.detail?.kind;
+    const title =
+      kind === "rate_limit"
+        ? "GitHub rate limit reached"
+        : kind === "network"
+          ? "Network error"
+          : kind === "not_found"
+            ? "Repository or path not found"
+            : kind === "forbidden"
+              ? "GitHub forbade this request"
+              : kind === "empty_repo"
+                ? "Repository is empty"
+                : "Could not start session";
+    const detail =
+      kind === "rate_limit"
+        ? "GitHub limits unauthenticated requests per IP. Try again in a few minutes or pick a curated demo. CodeType does not proxy GitHub — this is your browser talking to GitHub directly."
+        : (err?.message ?? "No items resolved.");
+    useAppStore.getState().navigate({ name: "error", title, detail });
     return;
   }
   useAppStore.getState().startSession(config, resolved, source);
