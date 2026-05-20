@@ -7,6 +7,7 @@ import { Button } from "./Button";
 import { Kbd, Panel } from "./Panel";
 import { buildGithubFileHref } from "@/core/github/githubFileUrl";
 import { buildShareUrlForCurrentSession } from "@/state/urlSync";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function TypingScreen() {
   const session = useAppStore((s) => s.session);
@@ -153,13 +154,16 @@ export function TypingScreen() {
               </>
             )}
           </div>
-          <TypingStats
-            state={session.typingState}
-            progress={{
-              current: session.cursor + 1,
-              total: session.resolved.items.length,
-            }}
-          />
+          <div className="flex items-center gap-4">
+            <TypingStats
+              state={session.typingState}
+              progress={{
+                current: session.cursor + 1,
+                total: session.resolved.items.length,
+              }}
+            />
+            <ThemeToggle />
+          </div>
         </div>
 
         {showCompletion ? (
