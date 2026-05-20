@@ -237,6 +237,35 @@ describe("charStatuses", () => {
     expect(s.input).toBe("");
     expect(s.mistakes.length).toBe(0);
   });
+
+  it("suppresses space when target wants a newline", () => {
+    let s = startTyping("foo\nbar");
+    for (const ch of "foo") s = applyKey(s, ch);
+    expect(s.cursor).toBe(3);
+    s = applyKey(s, " "); // target[3] === '\n' → space is dropped
+    expect(s.cursor).toBe(3);
+    expect(s.input).toBe("foo");
+    expect(s.mistakes.length).toBe(0);
+  });
+
+  it("suppresses space when target wants a tab", () => {
+    let s = startTyping("a\tb");
+    s = applyKey(s, "a");
+    s = applyKey(s, " "); // target[1] === '\t' → space is dropped
+    expect(s.cursor).toBe(1);
+    expect(s.input).toBe("a");
+    expect(s.mistakes.length).toBe(0);
+  });
+});
+
+describe("typingEngine — smart Tab/Enter", () => {
+  it("Tab is a no-op when target at cursor is a newline", () => {
+    let s = startTyping("\nfoo");
+    s = applyKey(s, "Tab"); // target[0] === '\n' → no consume
+    expect(s.cursor).toBe(0);
+    expect(s.input).toBe("");
+    expect(s.freeChars).toBe(0);
+  });
 });
 
 describe("typingEngine — smart space", () => {

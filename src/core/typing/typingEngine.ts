@@ -94,7 +94,11 @@ function computeWords(target: string): Word[] {
 }
 
 /** The word containing or just-ended-at `cursor`, or null if cursor sits
- *  in a whitespace gap or past the last word. */
+ *  in a whitespace gap or past the last word. The `cursor === w.end`
+ *  branch is intentionally kept for callers other than handleSpace
+ *  (which guards it earlier by checking that target[cursor] is
+ *  non-whitespace — at word.end target is always whitespace or
+ *  undefined). */
 function wordAt(state: TypingState, cursor: number): Word | null {
   for (const w of state.words) {
     if (cursor >= w.start && cursor < w.end) return w;
@@ -238,6 +242,8 @@ function handleEnter(state: TypingState, now: number): TypingState {
   // Smart-Enter: only if newline matched, auto-skip the next line indent.
   if (expected !== "\n") return next;
 
+  // Walk forward through [space|tab] only. '\n' is neither, so the loop
+  // stops naturally at the next line boundary if there's a blank line.
   let i = next.cursor;
   while (
     i < next.target.length &&
@@ -260,7 +266,8 @@ function handleEnter(state: TypingState, now: number): TypingState {
 }
 
 function handleTab(state: TypingState, now: number): TypingState {
-  // Smart-Tab: if target at cursor is a whitespace run, consume it.
+  // Smart-Tab: consume any run of [space|tab] at cursor. '\n' is neither,
+  // so Tab pressed at a newline boundary is a no-op (user must press Enter).
   let i = state.cursor;
   while (
     i < state.target.length &&
