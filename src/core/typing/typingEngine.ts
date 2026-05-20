@@ -435,8 +435,12 @@ function handleBackspace(state: TypingState, meta: KeyMeta): TypingState {
   // visually "to the left of" the current cursor cell).
   const here = state.extras.get(state.cursor);
   if (here && here.length > 0) {
-    const wordKey = meta.ctrl || meta.meta;
-    const popCount = wordKey ? here.length : 1;
+    // ctrl/meta/alt all clear the whole boundary buffer at once —
+    // boundary extras are conceptually a single "word fragment" attached
+    // to the current position, so any of the word/token-backspace
+    // modifiers should empty it in one shot rather than popping one char.
+    const popAll = meta.ctrl || meta.meta || meta.alt;
+    const popCount = popAll ? here.length : 1;
     const remaining = here.slice(0, here.length - popCount);
     const next = new Map(state.extras);
     if (remaining.length === 0) next.delete(state.cursor);

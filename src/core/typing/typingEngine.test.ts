@@ -432,6 +432,25 @@ describe("typingEngine — boundary extras", () => {
     expect(s.correctedMistakes).toBe(3);
   });
 
+  it("alt-backspace also clears all boundary extras at cursor", () => {
+    let s = startTyping("a b");
+    s = applyKey(s, "a", { now: 1 });
+    for (const ch of "xyz") s = applyKey(s, ch, { now: 1 });
+    s = applyKey(s, "Backspace", { now: 2, alt: true });
+    expect(s.extras.has(1)).toBe(false);
+    expect(s.correctedMistakes).toBe(3);
+  });
+
+  it("ctrl-backspace at cursor=0 clears all extras at the leading boundary", () => {
+    let s = startTyping(" x");
+    for (const ch of "abc") s = applyKey(s, ch, { now: 1 });
+    expect(s.extras.get(0)).toBe("abc");
+    s = applyKey(s, "Backspace", { now: 2, ctrl: true });
+    expect(s.extras.has(0)).toBe(false);
+    expect(s.correctedMistakes).toBe(3);
+    expect(s.cursor).toBe(0);
+  });
+
   it("Space at a newline boundary attaches as boundary extra (does not consume \\n)", () => {
     let s = startTyping("foo\nbar");
     for (const ch of "foo") s = applyKey(s, ch, { now: 1 });
