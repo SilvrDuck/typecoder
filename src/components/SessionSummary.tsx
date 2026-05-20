@@ -8,7 +8,6 @@ import {
   buildWeakSpotPracticeQueue,
 } from "@/core/typing/weakSpots";
 import { calculateMetrics } from "@/core/typing/metrics";
-import { startTyping } from "@/core/typing/typingEngine";
 
 export function SessionSummary() {
   const session = useAppStore((s) => s.session);
@@ -75,7 +74,7 @@ export function SessionSummary() {
       level: "file" as const,
       language: session.resolved.items[0]?.language,
     }));
-    const fakeConfig = {
+    const weakSpotConfig = {
       version: 1 as const,
       repo: session.config.repo,
       title: `${session.config.title} — weak spots`,
@@ -86,13 +85,13 @@ export function SessionSummary() {
       })),
     };
     const resolved = {
-      title: fakeConfig.title,
-      repo: fakeConfig.repo,
+      title: weakSpotConfig.title,
+      repo: weakSpotConfig.repo,
       ref: session.resolved.ref,
       items: resolvedItems,
       errors: [],
     };
-    startSession(fakeConfig, resolved, `${session.source} — weak spots`);
+    startSession(weakSpotConfig, resolved, `${session.source} — weak spots`);
   }
 
   function restartSession() {
@@ -114,9 +113,6 @@ export function SessionSummary() {
   function newSession() {
     resetAll();
   }
-
-  // Trigger an in-place reset of typingState on the cursor=0 item.
-  void startTyping;
 
   return (
     <main className="min-h-screen px-6 py-12">

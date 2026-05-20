@@ -73,6 +73,11 @@ type Actions = {
   setTypingState: (s: TypingState) => void;
   /** Commit current item result, advance cursor, reset typing for next. */
   advanceItem: (snippet: SnippetResult) => void;
+  /**
+   * Move back to the previous session item without recording a result.
+   * Discards any in-flight typing on the current item. No-op at cursor 0.
+   */
+  goToPreviousItem: () => void;
   restartCurrentItem: () => void;
   resetAll: () => void;
 };
@@ -94,10 +99,10 @@ const INITIAL: State = {
 export const useAppStore = create<State & Actions>()((set, get) => ({
   ...INITIAL,
 
-  // expose for Playwright drive-by tests
+  // Dev/Playwright drive-by hook. Gated to non-production builds so the
+  // store shape is not leaked on the deployed static site.
   ...((): object => {
-    if (typeof window !== "undefined") {
-      // Late-bound so the actions below are in scope.
+    if (typeof window !== "undefined" && import.meta.env.DEV) {
       queueMicrotask(() => {
         // @ts-expect-error window hook
         (window as Window).__codetype = {
@@ -191,6 +196,25 @@ export const useAppStore = create<State & Actions>()((set, get) => ({
         cursor: nextCursor,
         results: [...s.results, snippet],
         typingState: startTyping(next.text),
+      },
+    });
+  },
+
+  goToPreviousItem: () => {
+    const s = get().session;
+    if (!s) return;
+    if (s.cursor <= 0) return;
+    const prevCursor = s.cursor - 1;
+    const prev = s.resolved.items[prevCursor];
+    if (!prev) return;
+    set({
+      session: {
+        ...s,
+        cursor: prevCursor,
+        // Drop the most recent committed result so it's not double-counted
+        // if the user re-completes the item.
+        results: s.results.slice(0, prevCursor),
+        typingState: startTyping(prev.text),
       },
     });
   },

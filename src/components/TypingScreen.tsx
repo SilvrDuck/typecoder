@@ -1,39 +1,61 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAppStore } from "@/state/useAppStore";
 import { TypingSurface } from "./TypingSurface";
 import { TypingStats } from "./TypingStats";
 import { CompletionCard } from "./CompletionCard";
 import { FocusCard } from "./FocusCard";
 import { Button } from "./Button";
-import { Kbd } from "./Panel";
+import { Kbd, Panel } from "./Panel";
 
 export function TypingScreen() {
   const session = useAppStore((s) => s.session);
   const setTypingState = useAppStore((s) => s.setTypingState);
   const advanceItem = useAppStore((s) => s.advanceItem);
+  const goToPreviousItem = useAppStore((s) => s.goToPreviousItem);
   const restartCurrentItem = useAppStore((s) => s.restartCurrentItem);
   const navigate = useAppStore((s) => s.navigate);
 
   const [showFocusCard, setShowFocusCard] = useState(true);
   const [showCompletion, setShowCompletion] = useState(false);
   const [skipIntros, setSkipIntros] = useState(false);
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false);
 
   useEffect(() => {
     setShowCompletion(false);
+    setShowSkipConfirm(false);
     if (skipIntros) setShowFocusCard(false);
     else setShowFocusCard(true);
   }, [session?.cursor, skipIntros]);
 
-  // Esc opens a minimal pause/menu (returns to landing).
+  const handleNext = useCallback(() => {
+    const s = useAppStore.getState().session;
+    if (!s) return;
+    const cur = s.resolved.items[s.cursor];
+    if (!cur) return;
+    advanceItem({
+      target: cur.text,
+      state: s.typingState,
+      label: cur.label,
+      path: cur.path,
+    });
+  }, [advanceItem]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
+        if (showSkipConfirm) {
+          setShowSkipConfirm(false);
+          return;
+        }
         navigate({ name: "landing" });
       } else if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         restartCurrentItem();
         setShowCompletion(false);
+      } else if (e.key === "Tab" && e.shiftKey) {
+        e.preventDefault();
+        goToPreviousItem();
       } else if (e.key === "Tab" && showCompletion) {
         e.preventDefault();
         handleNext();
@@ -41,8 +63,14 @@ export function TypingScreen() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showCompletion, restartCurrentItem, navigate]);
+  }, [
+    showCompletion,
+    showSkipConfirm,
+    restartCurrentItem,
+    navigate,
+    goToPreviousItem,
+    handleNext,
+  ]);
 
   if (!session) {
     return (
@@ -59,19 +87,14 @@ export function TypingScreen() {
     setShowCompletion(true);
   }
 
-  function handleNext() {
-    if (!session) return;
-    advanceItem({
-      target: item.text,
-      state: session.typingState,
-      label: item.label,
-      path: item.path,
-    });
-  }
-
   function handleRestart() {
     restartCurrentItem();
     setShowCompletion(false);
+  }
+
+  function confirmSkip() {
+    setShowSkipConfirm(false);
+    handleNext();
   }
 
   return (
@@ -141,6 +164,9 @@ export function TypingScreen() {
               <Kbd>Tab</Kbd> next
             </span>
             <span>
+              <Kbd>⇧Tab</Kbd> previous
+            </span>
+            <span>
               <Kbd>⌘↵</Kbd> restart
             </span>
             <span>
@@ -154,15 +180,47 @@ export function TypingScreen() {
             <Button
               intent="ghost"
               mono
-              onClick={() => {
-                if (confirm("Skip this snippet?")) handleNext();
-              }}
+              onClick={() => setShowSkipConfirm(true)}
               className="text-xs"
+              data-testid="typing-skip"
             >
               Skip
             </Button>
           </div>
         </div>
+
+        {showSkipConfirm && (
+          <div
+            className="mt-6 grid place-items-center"
+            data-testid="skip-confirm"
+            role="alertdialog"
+            aria-label="Skip snippet"
+          >
+            <Panel className="max-w-md w-full">
+              <p className="text-ink-100 text-sm mb-5">
+                Skip this snippet? Your in-progress typing will be discarded.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  intent="primary"
+                  mono
+                  onClick={confirmSkip}
+                  data-testid="skip-confirm-yes"
+                  autoFocus
+                >
+                  Skip
+                </Button>
+                <Button
+                  mono
+                  onClick={() => setShowSkipConfirm(false)}
+                  data-testid="skip-confirm-no"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Panel>
+          </div>
+        )}
       </div>
     </main>
   );
