@@ -3,6 +3,7 @@ import {
   applyKey,
   charStatuses,
   isComplete,
+  type CharStatus,
   type TypingState,
 } from "@/core/typing/typingEngine";
 
@@ -17,24 +18,26 @@ type Props = {
 /**
  * Custom-rendered typing surface.
  *
- * - No visible textarea. A hidden input captures keystrokes when the
- *   surface has focus.
- * - Each character of the target is rendered as a span with one of four
- *   classes (pending / correct / wrong / extra) so the typing color
- *   semantics are crisp and deterministic.
- * - The caret is a 1px-wide block on the current position.
- * - Whitespace mistakes get a small glyph (·, →, ↵) so the user can see
- *   what they typed; correctly typed whitespace stays invisible.
+ * Rendering rules (mirrors Monkeytype's `indicateTypos: "replace"`):
+ *   - pending  → expected target char (dim)
+ *   - correct  → expected target char (bright)
+ *   - wrong    → **the char the user typed** in red, so the user can see
+ *                what they hit. Whitespace mistakes get a small glyph
+ *                (· → ↵). Wrong-on-target-newline still emits a line break
+ *                so layout follows the target.
+ *   - extra    → typed char in red, also with whitespace glyphs
+ *
+ * The caret is a 2px-wide block on the current cursor cell, or a trailing
+ * block when the cursor sits past the last cell (input.length ===
+ * target.length but not yet complete).
  */
 export function TypingSurface({ state, onChange, onComplete, disabled }: Props) {
   const captureRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-focus when mounted or when a new item begins (state.cursor = 0).
   useEffect(() => {
     if (!disabled) captureRef.current?.focus();
   }, [state.target, disabled]);
 
-  // Fire completion exactly once when the engine transitions to complete.
   const wasCompleteRef = useRef(false);
   useEffect(() => {
     const done = isComplete(state);
@@ -49,19 +52,14 @@ export function TypingSurface({ state, onChange, onComplete, disabled }: Props) 
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (disabled) return;
-    // Ignore modifier-only or function keys
     if (e.key.length > 1) {
       const handled = ["Backspace", "Enter", "Tab"];
       if (!handled.includes(e.key)) return;
     }
-    // Allow Esc to bubble (used by the screen-level pause menu later)
     if (e.key === "Escape") return;
-
-    // Block default for keys we handle so the textarea doesn't echo
     if (e.key === "Tab" || e.key === "Enter" || e.key === "Backspace") {
       e.preventDefault();
     }
-
     const next = applyKey(state, e.key, {
       ctrl: e.ctrlKey,
       meta: e.metaKey,
@@ -70,6 +68,11 @@ export function TypingSurface({ state, onChange, onComplete, disabled }: Props) 
     });
     if (next !== state) onChange(next);
   }
+
+  const cells = renderChars(state.target, state.input, statuses);
+  const trailingCaret =
+    state.input.length === state.target.length &&
+    state.input !== state.target;
 
   return (
     <div
@@ -96,37 +99,35 @@ export function TypingSurface({ state, onChange, onComplete, disabled }: Props) 
       />
       <pre
         className="whitespace-pre-wrap break-words m-0 p-0"
+        style={{ tabSize: 2 }}
         aria-live="polite"
         aria-atomic="false"
       >
-        {renderChars(state.target, state.input, statuses)}
+        {cells}
+        {trailingCaret && <TrailingCaret />}
       </pre>
     </div>
   );
 }
 
-function renderChars(target: string, input: string, statuses: string[]) {
+function renderChars(
+  target: string,
+  input: string,
+  statuses: CharStatus[],
+): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   const n = Math.max(target.length, input.length);
   for (let i = 0; i < n; i++) {
-    const status = statuses[i];
-    const expected = target[i];
-    const typed = input[i];
-    const isCaret = i === input.length;
     nodes.push(
       <Char
         key={i}
         index={i}
-        expected={expected}
-        typed={typed}
-        status={status}
-        caret={isCaret}
+        expected={target[i]}
+        typed={input[i]}
+        status={statuses[i]}
+        caret={i === input.length}
       />,
     );
-  }
-  // Caret at end-of-input when input.length === target.length but no extras yet
-  if (input.length === target.length && !nodes.length) {
-    nodes.push(<Caret key="end-caret" />);
   }
   return nodes;
 }
@@ -141,20 +142,17 @@ function Char({
   index: number;
   expected: string | undefined;
   typed: string | undefined;
-  status: string;
+  status: CharStatus;
   caret: boolean;
 }) {
-  const ch = expected ?? typed ?? "";
-  const display = displayChar(ch, status, typed);
-  const cls = colorClass(status);
   return (
     <span
       data-index={index}
-      className={`relative ${cls}`}
       data-status={status}
+      className={`relative ${colorClass(status)}`}
     >
       {caret && <Caret />}
-      {display}
+      {renderCell(expected, typed, status)}
     </span>
   );
 }
@@ -163,55 +161,92 @@ function Caret() {
   return (
     <span
       aria-hidden="true"
-      className="inline-block align-baseline w-[2px] h-[1.2em] bg-accent -ml-[1px] absolute -translate-x-[1px] top-[0.15em] animate-caret"
+      className="inline-block w-[2px] h-[1.2em] bg-accent absolute -translate-x-[1px] top-[0.15em] animate-caret"
     />
   );
 }
 
-function colorClass(status: string): string {
+function TrailingCaret() {
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="trailing-caret"
+      className="inline-block w-[2px] h-[1.2em] bg-accent align-text-bottom animate-caret"
+    />
+  );
+}
+
+function colorClass(status: CharStatus): string {
   switch (status) {
     case "pending":
       return "text-ink-500";
     case "correct":
       return "text-ink-100";
     case "wrong":
-      return "text-err underline decoration-err/40";
+      return "text-err underline decoration-err/50 underline-offset-2";
     case "extra":
-      return "text-err underline decoration-err/40";
-    default:
-      return "";
+      return "text-err/80 underline decoration-err/40 underline-offset-2";
   }
 }
 
-function displayChar(
-  expected: string,
-  status: string,
+/**
+ * What to draw inside a cell, given expected/typed/status.
+ *
+ * Replace-mode: wrong cells show the typed char (Monkeytype `indicateTypos:
+ * "replace"`). Whitespace typed-chars become visible glyphs so the user
+ * never sees an "empty" red cell.
+ *
+ * When the target char is a newline, the cell still emits "\n" so the
+ * rendered layout follows the target's line breaks even when the typed
+ * char was something else.
+ */
+function renderCell(
+  expected: string | undefined,
   typed: string | undefined,
+  status: CharStatus,
 ): React.ReactNode {
+  if (status === "pending" || status === "correct") {
+    // Real \t and \n; <pre style={{tabSize: 2}}> renders them consistently.
+    return expected ?? "";
+  }
+  // wrong | extra → show what the user typed. typed is always defined for
+  // these statuses (cell only exists because input[i] exists).
+  const t = typed ?? "";
+  const glyph = whitespaceGlyph(t);
   if (expected === "\n") {
-    if (status === "correct") return "\n";
-    if (status === "wrong" || status === "extra") {
-      return (
-        <>
-          <span aria-hidden="true" className="opacity-40">
-            ↵
-          </span>
-          {"\n"}
-        </>
-      );
-    }
-    return "\n";
-  }
-  if (expected === "\t") {
-    return status === "correct" ? "\t" : "  ";
-  }
-  if (expected === " " && (status === "wrong" || status === "extra")) {
+    // Wrong cell where target wanted a line break: emit the glyph for the
+    // wrong char, then "\n" so the rendered layout still breaks here.
     return (
-      <span aria-hidden="true" className="opacity-40">
+      <>
+        {glyph ?? t}
+        {"\n"}
+      </>
+    );
+  }
+  return glyph ?? t;
+}
+
+function whitespaceGlyph(ch: string): React.ReactNode | null {
+  if (ch === " ") {
+    return (
+      <span aria-hidden="true" className="opacity-70">
         ·
       </span>
     );
   }
-  if (status === "extra" && typed !== undefined) return typed;
-  return expected;
+  if (ch === "\t") {
+    return (
+      <span aria-hidden="true" className="opacity-70">
+        →
+      </span>
+    );
+  }
+  if (ch === "\n") {
+    return (
+      <span aria-hidden="true" className="opacity-70">
+        ↵
+      </span>
+    );
+  }
+  return null;
 }
