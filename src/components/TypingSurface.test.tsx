@@ -53,16 +53,33 @@ describe("TypingSurface", () => {
   });
 
   it("renders whitespace mistakes as visible glyphs", () => {
-    let state = startTyping("ab");
-    state = applyKey(state, " ", { now: 1 }); // wrong: expected 'a', typed ' '
+    // Target wants a newline, user types a space → wrong (space char on a
+    // non-space target). Smart-space only skips when target is mid-token,
+    // not when target wants whitespace.
+    let state = startTyping("\nb");
+    state = applyKey(state, " ", { now: 1 });
     render(
       <TypingSurface state={state} onChange={() => {}} onComplete={() => {}} />,
     );
     const surface = screen.getByTestId("typing-surface");
     const wrongCell = surface.querySelector('[data-status="wrong"]');
     expect(wrongCell).toBeTruthy();
-    // Glyph should appear (·) instead of an empty space
     expect(wrongCell!.textContent).toContain("·");
+  });
+
+  it("renders missed cells from smart-space skip", () => {
+    // target "ab cd": typing space at cursor 0 abandons "ab" → cursor jumps
+    // past the space to 3, positions 0..1 are missed.
+    let state = startTyping("ab cd");
+    state = applyKey(state, " ", { now: 1 });
+    render(
+      <TypingSurface state={state} onChange={() => {}} onComplete={() => {}} />,
+    );
+    const surface = screen.getByTestId("typing-surface");
+    const missed = surface.querySelectorAll('[data-status="missed"]');
+    expect(missed.length).toBe(2);
+    expect(missed[0].textContent).toBe("a");
+    expect(missed[1].textContent).toBe("b");
   });
 
   it("renders extra cells past target with the typed char in red", () => {

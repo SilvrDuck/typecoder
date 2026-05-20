@@ -186,6 +186,11 @@ function colorClass(status: CharStatus): string {
       return "text-err underline decoration-err/50 underline-offset-2";
     case "extra":
       return "text-err/80 underline decoration-err/40 underline-offset-2";
+    case "missed":
+      // Skipped via smart-space: expected char shown in dimmed red so the
+      // user sees what they didn't type. Distinct from "wrong" (which is
+      // a typed-char overlay) and from "pending" (which is dim grey).
+      return "text-err/60 underline decoration-err/20 underline-offset-2";
   }
 }
 
@@ -208,6 +213,22 @@ function renderCell(
   if (status === "pending" || status === "correct") {
     // Real \t and \n; <pre style={{tabSize: 2}}> renders them consistently.
     return expected ?? "";
+  }
+  if (status === "missed") {
+    // Skipped via smart-space: show the *expected* char (dimmed red via
+    // colorClass) so the user sees what they didn't type. Whitespace gets
+    // its glyph so a missed indent doesn't render as invisible cells.
+    const e = expected ?? "";
+    const glyph = whitespaceGlyph(e);
+    if (e === "\n") {
+      return (
+        <>
+          {glyph ?? e}
+          {"\n"}
+        </>
+      );
+    }
+    return glyph ?? e;
   }
   // wrong | extra → show what the user typed. typed is always defined for
   // these statuses (cell only exists because input[i] exists).

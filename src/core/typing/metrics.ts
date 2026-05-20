@@ -39,11 +39,15 @@ export function calculateMetrics(
   // / smart Tab auto-consumed (those weren't real keystrokes — a single
   // Tab can eat 4 spaces and should not count as 4 keystrokes for WPM).
   // Mistakes that were backspaced are tracked in state.correctedMistakes.
+  // Missed chars (smart-space skips) are already included in freeChars
+  // when handleSpace fires, so they don't bloat keystrokes. They also
+  // get excluded from correctChars below so accuracy reflects the miss.
   const keptKeystrokes = Math.max(0, state.input.length - state.freeChars);
   const totalKeystrokes = keptKeystrokes + state.correctedMistakes;
 
   let correctChars = 0;
   for (let i = 0; i < state.input.length; i++) {
+    if (state.missedIndices.has(i)) continue;
     if (i < state.target.length && state.input[i] === state.target[i]) {
       correctChars++;
     }
