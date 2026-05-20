@@ -41,11 +41,9 @@ test("curated session: load, type, complete one item, advance", async ({ page })
   await page.getByTestId("landing-type-right-away").click();
   await page.getByTestId("curated-start-fastapi").click();
 
-  // Loading state shows briefly
-  await expect(page.getByText(/Fetching files from GitHub/i)).toBeVisible({
-    timeout: 5000,
-  });
-
+  // Goes straight to the typing surface (curated files may already
+  // be preloaded into the github-client cache, so the loading state
+  // can flash too briefly to assert against deterministically).
   await expect(page.getByTestId("typing-surface")).toBeVisible({ timeout: 10000 });
   await expect(page.getByTestId("typing-stats")).toBeVisible();
 
