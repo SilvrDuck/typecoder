@@ -9,3 +9,5 @@ kanban/
 .vite/
 coverage/
 *.tsbuildinfo
+*-live.png
+.playwright-mcp/
