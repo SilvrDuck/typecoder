@@ -53,33 +53,33 @@ describe("TypingSurface", () => {
   });
 
   it("renders whitespace mistakes as visible glyphs", () => {
-    // Target wants a newline, user types a space → wrong (space char on a
-    // non-space target). Smart-space only skips when target is mid-token,
-    // not when target wants whitespace.
-    let state = startTyping("\nb");
-    state = applyKey(state, " ", { now: 1 });
+    // Target "ab"; user types 'a' then Enter (wrong: expected 'b', got \n).
+    // The wrong cell should show ↵.
+    let state = startTyping("ab");
+    state = applyKey(state, "a", { now: 1 });
+    state = applyKey(state, "Enter", { now: 2 });
     render(
       <TypingSurface state={state} onChange={() => {}} onComplete={() => {}} />,
     );
     const surface = screen.getByTestId("typing-surface");
     const wrongCell = surface.querySelector('[data-status="wrong"]');
     expect(wrongCell).toBeTruthy();
-    expect(wrongCell!.textContent).toContain("·");
+    expect(wrongCell!.textContent).toContain("↵");
   });
 
   it("renders missed cells from smart-space skip", () => {
-    // target "ab cd": typing space at cursor 0 abandons "ab" → cursor jumps
-    // past the space to 3, positions 0..1 are missed.
+    // target "ab cd": type 'a' to enter the word, then space → smart-skip
+    // marks 'b' as missed; cursor lands after the space at index 3.
     let state = startTyping("ab cd");
-    state = applyKey(state, " ", { now: 1 });
+    state = applyKey(state, "a", { now: 1 });
+    state = applyKey(state, " ", { now: 2 });
     render(
       <TypingSurface state={state} onChange={() => {}} onComplete={() => {}} />,
     );
     const surface = screen.getByTestId("typing-surface");
     const missed = surface.querySelectorAll('[data-status="missed"]');
-    expect(missed.length).toBe(2);
-    expect(missed[0].textContent).toBe("a");
-    expect(missed[1].textContent).toBe("b");
+    expect(missed.length).toBe(1);
+    expect(missed[0].textContent).toBe("b");
   });
 
   it("renders extra cells past target with the typed char in red", () => {
