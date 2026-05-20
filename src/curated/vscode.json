@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "repo": "microsoft/vscode",
+  "ref": "main",
+  "title": "VS Code — commands, services, workbench flow",
+  "description": "Trace how VS Code boots its workbench, registers commands, and dispatches them through its instantiation/services layer.",
+  "items": [
+    {
+      "level": "file",
+      "path": "src/vs/code/electron-main/main.ts",
+      "label": "Electron main entry"
+    },
+    {
+      "level": "file",
+      "path": "src/vs/platform/instantiation/common/instantiation.ts",
+      "label": "Instantiation service contract"
+    },
+    {
+      "level": "file",
+      "path": "src/vs/platform/commands/common/commands.ts",
+      "label": "Commands registry"
+    },
+    {
+      "level": "file",
+      "path": "src/vs/workbench/workbench.common.main.ts",
+      "label": "Workbench common entry"
+    },
+    {
+      "level": "file",
+      "path": "src/vs/platform/configuration/common/configuration.ts",
+      "label": "Configuration service contract"
+    }
+  ]
+}
