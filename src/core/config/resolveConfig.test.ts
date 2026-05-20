@@ -35,6 +35,24 @@ describe("resolveConfig — happy paths", () => {
     expect(r.items).toHaveLength(1);
     expect(r.items[0].text).toBe("line2\nline3");
     expect(r.errors).toEqual([]);
+    expect(r.items[0].preContext).toBe("line1");
+    expect(r.items[0].postContext).toBe("line4");
+  });
+
+  it("returns empty pre/post context when the snippet covers the whole file", async () => {
+    const fetcher = vi.fn().mockReturnValue(ok("only line"));
+    const r = await resolveConfig(
+      {
+        version: 1,
+        repo: "a/b",
+        title: "t",
+        items: [{ level: "file", path: "x.ts", label: "x" }],
+      },
+      fetcher,
+    );
+    expect(r.items).toHaveLength(1);
+    expect(r.items[0].preContext).toBe("");
+    expect(r.items[0].postContext).toBe("");
   });
 
   it("resolves a function by symbol via regex extractor", async () => {

@@ -32,6 +32,17 @@ export type ResolvedItem = {
   startLine?: number;
   endLine?: number;
   whyItMatters?: string;
+  /**
+   * Lines of the file ABOVE the typed snippet, joined with `\n`. Shown
+   * dimmed in the typing surface so the user has context for what
+   * they're typing. Empty when the snippet covers the entire file.
+   */
+  preContext?: string;
+  /**
+   * Lines of the file BELOW the typed snippet, joined with `\n`. Empty
+   * when the snippet ends at the last line.
+   */
+  postContext?: string;
 };
 
 export type ResolvedItemError = {
@@ -161,6 +172,7 @@ export async function resolveConfig(
       continue;
     }
 
+    const { preContext, postContext } = sliceContext(code, startLine, endLine);
     items.push({
       id,
       label: item.label,
@@ -171,6 +183,8 @@ export async function resolveConfig(
       language: languageOf(item.path),
       startLine,
       endLine,
+      preContext,
+      postContext,
     });
   }
 
@@ -206,6 +220,23 @@ function rangeError(i: number, item: PracticeItem): ResolvedItemError {
     kind: "invalid_range",
     message: `Item ${i + 1} has startLine > endLine.`,
   };
+}
+
+/**
+ * Split `code` into the lines that come before `startLine` and after
+ * `endLine` (both 1-indexed, inclusive). Returns empty strings when
+ * the snippet is the whole file.
+ */
+function sliceContext(
+  code: string,
+  startLine: number | undefined,
+  endLine: number | undefined,
+): { preContext: string; postContext: string } {
+  if (!startLine || !endLine) return { preContext: "", postContext: "" };
+  const lines = code.split("\n");
+  const pre = lines.slice(0, startLine - 1).join("\n");
+  const post = lines.slice(endLine).join("\n");
+  return { preContext: pre, postContext: post };
 }
 
 // Re-export for convenience
