@@ -94,6 +94,21 @@ const INITIAL: State = {
 export const useAppStore = create<State & Actions>()((set, get) => ({
   ...INITIAL,
 
+  // expose for Playwright drive-by tests
+  ...((): object => {
+    if (typeof window !== "undefined") {
+      // Late-bound so the actions below are in scope.
+      queueMicrotask(() => {
+        // @ts-expect-error window hook
+        (window as Window).__codetype = {
+          state: () => useAppStore.getState(),
+          reset: () => useAppStore.getState().resetAll(),
+        };
+      });
+    }
+    return {};
+  })(),
+
   navigate: (view) => set({ view }),
   back: () => {
     const name = get().view.name;
