@@ -1,4 +1,5 @@
 import { useAppStore } from "@/state/useAppStore";
+import { ThemeToggle } from "./ThemeToggle";
 
 /**
  * The `▶ CodeType / breadcrumb` mark used on every non-landing screen.
@@ -7,7 +8,7 @@ import { useAppStore } from "@/state/useAppStore";
 export function Mark({ trail }: { trail?: string[] }) {
   const navigate = useAppStore((s) => s.navigate);
   return (
-    <header className="mb-12">
+    <header className="mb-12 flex items-center justify-between gap-4">
       <button
         onClick={() => navigate({ name: "landing" })}
         className="font-mono text-xs tracking-tightish text-ink-300 hover:text-ink-100 transition-colors"
@@ -21,6 +22,7 @@ export function Mark({ trail }: { trail?: string[] }) {
           </span>
         ))}
       </button>
+      <ThemeToggle />
     </header>
   );
 }

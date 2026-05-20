@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useAppStore } from "@/state/useAppStore";
 import { Button } from "./Button";
 import { Footer } from "./Footer";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Landing() {
   const navigate = useAppStore((s) => s.navigate);
@@ -23,10 +24,11 @@ export function Landing() {
   return (
     <main className="min-h-screen grid place-items-center px-6">
       <div className="max-w-xl w-full">
-        <header className="mb-16">
+        <header className="mb-16 flex items-center justify-between gap-4">
           <h1 className="font-mono text-xs tracking-tightish text-ink-300">
             <span className="text-accent">▶</span> CodeType
           </h1>
+          <ThemeToggle />
         </header>
 
         <p className="font-sans text-3xl md:text-4xl leading-tight tracking-tightish text-ink-100">

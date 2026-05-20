@@ -2,33 +2,35 @@ import type { Config } from "tailwindcss";
 
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
-  darkMode: "class",
+  darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
+        // ink scale driven by CSS variables so light/dark themes can
+        // remap the same Tailwind classes (bg-ink-900, text-ink-100, …)
+        // without rewriting every component.
         ink: {
-          950: "#08090b",
-          900: "#0c0d10",
-          850: "#101216",
-          800: "#14171c",
-          700: "#1c2026",
-          600: "#262b33",
-          500: "#3a4049",
-          400: "#5b6471",
-          300: "#8a92a0",
-          200: "#b6bcc6",
-          100: "#dcdfe5",
-          50: "#f0f2f5",
+          950: "rgb(var(--ink-950) / <alpha-value>)",
+          900: "rgb(var(--ink-900) / <alpha-value>)",
+          850: "rgb(var(--ink-850) / <alpha-value>)",
+          800: "rgb(var(--ink-800) / <alpha-value>)",
+          700: "rgb(var(--ink-700) / <alpha-value>)",
+          600: "rgb(var(--ink-600) / <alpha-value>)",
+          500: "rgb(var(--ink-500) / <alpha-value>)",
+          400: "rgb(var(--ink-400) / <alpha-value>)",
+          300: "rgb(var(--ink-300) / <alpha-value>)",
+          200: "rgb(var(--ink-200) / <alpha-value>)",
+          100: "rgb(var(--ink-100) / <alpha-value>)",
+          50: "rgb(var(--ink-50) / <alpha-value>)",
         },
         accent: {
-          // restrained warm amber — feels like a terminal cursor, not SaaS purple
-          DEFAULT: "#f5c451",
-          soft: "#f5c45122",
-          dim: "#a07c1f",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          soft: "rgb(var(--accent) / 0.14)",
+          dim: "rgb(var(--accent-dim) / <alpha-value>)",
         },
-        ok: "#7fb685",
-        warn: "#e3a857",
-        err: "#e07a7a",
+        ok: "rgb(var(--ok) / <alpha-value>)",
+        warn: "rgb(var(--warn) / <alpha-value>)",
+        err: "rgb(var(--err) / <alpha-value>)",
       },
       fontFamily: {
         mono: [
@@ -53,14 +55,14 @@ export default {
         ],
       },
       fontSize: {
-        // tight, opinionated scale
         "2xs": ["0.6875rem", { lineHeight: "1rem", letterSpacing: "0.04em" }],
       },
       letterSpacing: {
         tightish: "-0.01em",
       },
       boxShadow: {
-        "elev-1": "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 0 0 1px rgba(255,255,255,0.04)",
+        "elev-1":
+          "0 1px 0 0 rgb(var(--elev-tint) / 0.04) inset, 0 0 0 1px rgb(var(--elev-tint) / 0.04)",
       },
       keyframes: {
         caret: {

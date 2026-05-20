@@ -10,6 +10,7 @@ import type {
 import { startTyping } from "@/core/typing/typingEngine";
 import type { CuratedRepo } from "@/core/config/curated";
 import type { SnippetResult } from "@/core/typing/weakSpots";
+import { applyTheme, persistTheme, resolveInitialTheme, type Theme } from "./theme";
 
 /**
  * App-wide client state. No persistence — refresh wipes everything,
@@ -53,6 +54,7 @@ type State = {
   loadAnyRepo: {
     input: string;
   };
+  theme: Theme;
 };
 
 type Actions = {
@@ -80,6 +82,9 @@ type Actions = {
   goToPreviousItem: () => void;
   restartCurrentItem: () => void;
   resetAll: () => void;
+
+  setTheme: (theme: Theme) => void;
+  toggleTheme: () => void;
 };
 
 const INITIAL: State = {
@@ -94,6 +99,7 @@ const INITIAL: State = {
     customFocus: "",
   },
   loadAnyRepo: { input: "" },
+  theme: resolveInitialTheme(),
 };
 
 export const useAppStore = create<State & Actions>()((set, get) => ({
@@ -227,5 +233,20 @@ export const useAppStore = create<State & Actions>()((set, get) => ({
     set({ session: { ...s, typingState: startTyping(cur.text) } });
   },
 
-  resetAll: () => set({ ...INITIAL, view: { name: "landing" } }),
+  resetAll: () => {
+    const theme = get().theme;
+    set({ ...INITIAL, view: { name: "landing" }, theme });
+  },
+
+  setTheme: (theme) => {
+    applyTheme(theme);
+    persistTheme(theme);
+    set({ theme });
+  },
+  toggleTheme: () => {
+    const next: Theme = get().theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    persistTheme(next);
+    set({ theme: next });
+  },
 }));
