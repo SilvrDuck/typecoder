@@ -5,6 +5,9 @@ import { ScreenStub } from "@/components/ScreenStub";
 import { TypingScreen } from "@/components/TypingScreen";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { ErrorScreen } from "@/components/ErrorScreen";
+import { PromptBuilder } from "@/components/PromptBuilder";
+import { PasteConfig } from "@/components/PasteConfig";
+import { LoadAnyRepo } from "@/components/LoadAnyRepo";
 import { useAppStore } from "@/state/useAppStore";
 
 export function App() {
@@ -18,13 +21,11 @@ export function App() {
     case "custom-hub":
       return <CustomHub />;
     case "paste-config":
-      return <ScreenStub title="Paste config" trail={["custom", "paste"]} />;
+      return <PasteConfig />;
     case "prompt-builder":
-      return (
-        <ScreenStub title="Build config prompt" trail={["custom", "prompt"]} />
-      );
+      return <PromptBuilder />;
     case "load-any-repo":
-      return <ScreenStub title="Load any repo" trail={["custom", "repo"]} />;
+      return <LoadAnyRepo />;
     case "loading":
       return <LoadingScreen title={view.title} />;
     case "typing":

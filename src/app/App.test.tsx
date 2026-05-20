@@ -40,11 +40,14 @@ describe("App", () => {
     expect(screen.getByTestId("custom-load")).toBeInTheDocument();
   });
 
-  it("back from a custom sub-screen returns to custom hub", () => {
+  it("clicking the Mark from a sub-screen returns to landing", () => {
     render(<App />);
     fireEvent.click(screen.getByTestId("landing-custom"));
     fireEvent.click(screen.getByTestId("custom-paste"));
-    fireEvent.click(screen.getByText(/Back/i));
-    expect(screen.getByRole("heading", { name: /Custom session/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Paste config/i }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/Go to landing/i));
+    expect(screen.getByText(/Type real code/i)).toBeInTheDocument();
   });
 });
