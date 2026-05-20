@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>CodeType · prompt builder</title><link rel="stylesheet" href="_mockup.css"></head>
+<body>
+  <div class="frame wide">
+    <div class="mark"><span class="caret">▶</span> CodeType <span class="dim">/ custom / build config prompt</span></div>
+    <h2 style="font-size: 22px; margin-bottom: 6px;">Build config prompt</h2>
+    <p class="muted" style="font-size: 14px; margin: 0 0 32px;">Generate a prompt you can paste into Claude, ChatGPT, or any LLM. CodeType does not call an LLM.</p>
+    <div class="grid-2">
+      <!-- left: controls -->
+      <div class="panel">
+        <div style="margin-bottom: 20px;">
+          <div class="label">Repository</div>
+          <input value="github.com/vitejs/vite">
+        </div>
+        <div style="margin-bottom: 20px;">
+          <div class="label">Ref (optional)</div>
+          <input value="main">
+        </div>
+        <div style="margin-bottom: 20px;">
+          <div class="label">Goal</div>
+          <select>
+            <option>Trace the main execution path</option>
+          </select>
+        </div>
+        <div class="inset" style="margin-bottom: 20px;">
+          <div class="label" style="margin-bottom: 4px;">Best for</div>
+          <p class="muted" style="font-size: 13px; line-height: 1.5; margin: 0;">Understanding how execution moves through the project.</p>
+        </div>
+        <div class="inset">
+          <div class="label" style="margin-bottom: 8px;">This prompt will ask the LLM to</div>
+          <ul style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-200); line-height: 1.7; margin: 0; padding-left: 18px;">
+            <li>find entry points</li>
+            <li>follow major calls</li>
+            <li>prefer functions over files</li>
+            <li>avoid generated code</li>
+          </ul>
+        </div>
+      </div>
+      <!-- right: preview -->
+      <div class="panel" style="padding: 0; display: flex; flex-direction: column;">
+        <div style="padding: 16px 24px; border-bottom: 1px solid var(--ink-700); display: flex; align-items: center; justify-content: space-between;">
+          <div class="label" style="margin: 0;">Generated prompt</div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn ghost mono" style="font-size: 12px; padding: 4px 10px;">Copy schema</button>
+            <button class="btn primary mono" style="font-size: 12px; padding: 4px 10px;">Copy prompt</button>
+          </div>
+        </div>
+        <pre style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-200); padding: 20px 24px; margin: 0; overflow: auto; line-height: 1.55;">You are generating a CodeType guided typing config.
+
+Repository: vitejs/vite
+Ref: main
+Outcome: Trace the main execution path
+
+Inspect the repository and produce JSON only.
+
+The config should guide a developer through the codebase
+by making them type important files, classes, and
+functions in a useful learning order.
+
+Schema:
+{
+  "version": 1,
+  "repo": "vitejs/vite",
+  ...
+}
+
+Rules:
+- Output valid JSON only.
+- Use real paths from the repo.
+- Use real symbols from the repo.
+- Prefer 8 to 20 items.
+- Prefer functions/classes over full files.
+- Order items so a developer can understand the
+  codebase progressively.</pre>
+      </div>
+    </div>
+  </div>
+</body></html>

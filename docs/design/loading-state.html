@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>CodeType · loading</title><link rel="stylesheet" href="_mockup.css">
+<style>
+.spin { display: inline-block; animation: rotate 1.2s linear infinite; }
+@keyframes rotate { to { transform: rotate(360deg); } }
+.progress-step { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-family: "JetBrains Mono", monospace; font-size: 13px; }
+.progress-step.done { color: var(--ok); }
+.progress-step.now { color: var(--ink-100); }
+.progress-step.next { color: var(--ink-500); }
+</style>
+</head>
+<body>
+  <div class="frame narrow">
+    <div class="mark"><span class="caret">▶</span> CodeType <span class="dim">/ resolving session</span></div>
+    <div class="panel" style="padding: 28px 32px;">
+      <h3 style="font-size: 16px; margin: 0 0 4px;">Trace Vite's main execution path</h3>
+      <p class="muted" style="font-size: 13px; margin: 0 0 20px;">Fetching files from GitHub in your browser…</p>
+      <div>
+        <div class="progress-step done"><span>✓</span><span>vitejs/vite · default branch</span></div>
+        <div class="progress-step done"><span>✓</span><span>resolveConfig · packages/vite/src/node/config.ts</span></div>
+        <div class="progress-step now"><span class="spin">◐</span><span>createServer · packages/vite/src/node/server/index.ts</span></div>
+        <div class="progress-step next"><span>·</span><span>handleHmr · packages/vite/src/node/server/hmr.ts</span></div>
+        <div class="progress-step next"><span>·</span><span>4 more queued</span></div>
+      </div>
+    </div>
+    <p class="mono" style="font-size: 11px; color: var(--ink-500); margin-top: 14px; letter-spacing: 0.05em;">
+      preloading next 3 items in background · esc to cancel
+    </p>
+  </div>
+</body></html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>CodeType · typing</title><link rel="stylesheet" href="_mockup.css"></head>
+<body>
+  <div class="frame wide">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+      <div class="crumb">
+        <span style="color: var(--accent);">▶</span>
+        <span style="color: var(--ink-200);">vitejs/vite</span>
+        <span class="sep">/</span>
+        <span>packages/vite/src/node/config.ts</span>
+        <span class="sep">·</span>
+        <span style="color: var(--ink-200);">resolveConfig</span>
+      </div>
+      <div class="mono" style="font-size: 12px; color: var(--ink-300); display: flex; gap: 20px;">
+        <span><span class="dim">wpm</span> <span style="color: var(--ink-100); margin-left: 4px;">42</span></span>
+        <span><span class="dim">acc</span> <span style="color: var(--ok); margin-left: 4px;">98%</span></span>
+        <span><span class="dim">err</span> <span style="color: var(--err); margin-left: 4px;">2</span></span>
+        <span class="dim">3 / 12</span>
+      </div>
+    </div>
+
+    <div class="panel" style="padding: 36px 40px;">
+      <div class="code-line"><span class="typed">export async function</span> <span class="typed" style="color: var(--accent);">resolveConfig</span><span class="typed">(</span></div>
+      <div class="code-line"><span class="typed">&nbsp;&nbsp;inlineConfig: InlineConfig,</span></div>
+      <div class="code-line"><span class="typed">&nbsp;&nbsp;command: 'build' | 'serve',</span></div>
+      <div class="code-line"><span class="typed">&nbsp;&nbsp;defaultMode = 'development</span><span class="caret-block">'</span><span>,</span></div>
+      <div class="code-line">): Promise&lt;ResolvedConfig&gt; {</div>
+      <div class="code-line">&nbsp;&nbsp;let config = inlineConfig</div>
+      <div class="code-line">&nbsp;&nbsp;let configFileDependencies: string[] = []</div>
+      <div class="code-line">&nbsp;&nbsp;let mode = inlineConfig.mode || defaultMode</div>
+      <div class="code-line">&nbsp;&nbsp;const isNodeEnvSet = !!process.env.NODE_ENV</div>
+      <div class="code-line">&nbsp;&nbsp;const packageCache: PackageCache = new Map()</div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 28px; color: var(--ink-400); font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+      <div style="display: flex; gap: 16px;">
+        <span><span class="kbd">Tab</span> next</span>
+        <span><span class="kbd">⌘↵</span> restart</span>
+        <span><span class="kbd">Esc</span> menu</span>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn ghost mono" style="font-size: 12px;">Restart</button>
+        <button class="btn ghost mono" style="font-size: 12px;">Skip</button>
+      </div>
+    </div>
+  </div>
+</body></html>

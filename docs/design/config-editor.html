@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>CodeType · paste config</title><link rel="stylesheet" href="_mockup.css"></head>
+<body>
+  <div class="frame wide">
+    <div class="mark"><span class="caret">▶</span> CodeType <span class="dim">/ custom / paste config</span></div>
+    <h2 style="font-size: 22px; margin-bottom: 6px;">Paste config</h2>
+    <p class="muted" style="font-size: 14px; margin: 0 0 32px;">Paste a CodeType JSON config. Preview it, then start a guided session.</p>
+    <div class="grid-2">
+      <div class="panel" style="padding: 0;">
+        <div style="padding: 12px 20px; border-bottom: 1px solid var(--ink-700);"><div class="label" style="margin: 0;">config.json</div></div>
+        <textarea style="border: 0; border-radius: 0; min-height: 380px; resize: vertical; font-size: 12px;" spellcheck="false">{
+  "version": 1,
+  "repo": "vitejs/vite",
+  "ref": "main",
+  "title": "Trace Vite's main execution path",
+  "items": [
+    { "level": "function", "path": "packages/vite/src/node/cli.ts",
+      "symbol": "main", "label": "CLI entry point" },
+    { "level": "function", "path": "packages/vite/src/node/config.ts",
+      "symbol": "resolveConfig", "label": "Resolve config" },
+    { "level": "function", "path": "packages/vite/src/node/server/index.ts",
+      "symbol": "createServer", "label": "Create dev server" }
+  ]
+}</textarea>
+      </div>
+      <div class="panel">
+        <div class="label">Preview</div>
+        <h3 style="font-size: 18px; margin: 4px 0 18px;">Trace Vite's main execution path</h3>
+        <div class="stat-grid" style="margin-bottom: 24px;">
+          <div><div class="big-num" style="font-size: 28px;">3</div><div class="legend">items</div></div>
+          <div><div class="big-num" style="font-size: 28px;">3</div><div class="legend">functions</div></div>
+          <div><div class="big-num" style="font-size: 28px;">0</div><div class="legend">files</div></div>
+        </div>
+        <ol style="padding: 0; margin: 0 0 24px; list-style: none;">
+          <li class="mono" style="display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ink-700); font-size: 13px;"><span class="dim">1</span><span>CLI entry point</span><span class="dim" style="margin-left: auto;">cli.ts · main</span></li>
+          <li class="mono" style="display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ink-700); font-size: 13px;"><span class="dim">2</span><span>Resolve config</span><span class="dim" style="margin-left: auto;">config.ts · resolveConfig</span></li>
+          <li class="mono" style="display: flex; gap: 12px; padding: 10px 0; font-size: 13px;"><span class="dim">3</span><span>Create dev server</span><span class="dim" style="margin-left: auto;">server/index.ts · createServer</span></li>
+        </ol>
+        <button class="btn primary mono" style="width: 100%; justify-content: center;">Start guided session</button>
+      </div>
+    </div>
+  </div>
+</body></html>

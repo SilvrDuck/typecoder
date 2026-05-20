@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>CodeType · error state</title><link rel="stylesheet" href="_mockup.css"></head>
+<body>
+  <div class="frame narrow">
+    <div class="mark"><span class="caret">▶</span> CodeType <span class="dim">/ rate limit</span></div>
+    <div class="panel" style="padding: 32px;">
+      <div style="display: flex; gap: 16px; align-items: flex-start;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 22px; color: var(--warn); line-height: 1;">!</div>
+        <div style="flex: 1;">
+          <h3 style="font-size: 16px; margin: 0 0 6px;">GitHub rate limit reached</h3>
+          <p class="muted" style="font-size: 13px; line-height: 1.6; margin: 0 0 18px;">
+            Unauthenticated GitHub requests are limited per IP. Try again in ~12 minutes,
+            or pick a curated demo to keep typing now. CodeType does not proxy GitHub —
+            this is your browser talking to GitHub directly.
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn primary mono">Pick curated</button>
+            <button class="btn ghost mono">Retry</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="mono" style="font-size: 11px; color: var(--ink-500); margin-top: 16px; letter-spacing: 0.05em;">
+      remaining: 0 · resets: 12 min · status: 403 · endpoint: /repos/vitejs/vite
+    </p>
+  </div>
+</body></html>
