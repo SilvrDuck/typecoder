@@ -8,9 +8,18 @@
  *     target. Whitespace between words (spaces, tabs, newlines) is
  *     "structural" — typed literally with the matching key.
  *
+ *   • Boundary extras: when target at cursor is structural whitespace
+ *     (' ', '\t', '\n') and the user types a non-matching key, the typed
+ *     char is recorded as an EXTRA attached to the current cursor position
+ *     (the boundary). Cursor does NOT advance; the structural whitespace
+ *     is preserved. Mirrors Monkeytype's "word's extras" — typed chars
+ *     past the end of a word stay attached to that word, never consume
+ *     the boundary space or the next line. Capped at MAX_EXTRAS total
+ *     (boundary + past-end).
+ *
  *   • SPACE:
  *       - target wants a literal space → matches (correct).
- *       - target wants \n or \t → no-op (user must press Enter/Tab).
+ *       - target wants \n or \t → boundary-extra (typed ' ' attached).
  *       - target wants a non-whitespace char:
  *           · cursor is at the START of the current word, nothing typed
  *             yet → no-op (Monkeytype rule 1.1).
@@ -21,21 +30,28 @@
  *     SPACE is never inserted as a "wrong" char.
  *
  *   • TAB: if target at cursor is a run of [space|tab], consume the run
- *     (smart-tab; CodeType-specific convenience). Otherwise no-op.
+ *     (smart-tab; CodeType-specific convenience). Otherwise no-op (Tab is
+ *     not a typical mash-key, no point promoting it to an extra).
  *
- *   • ENTER: insert "\n". If target also has "\n" here, auto-advance past
- *     the next line's leading [space|tab] indent (smart-enter).
+ *   • ENTER: if target wants "\n", insert and auto-skip next line's
+ *     [space|tab] indent. If target wants ' ' or '\t', boundary-extra
+ *     (typed '\n' attached). Otherwise insert wrong "\n" (glyph-only).
  *
  *   • Regular printable keys: insert at cursor. Matches → correct.
- *     Mismatch → wrong (counted in mistakes, rendered with replace mode).
- *     Past end of target → "extra" (cap at MAX_EXTRAS chars).
+ *     Mismatch with non-whitespace target → wrong. Mismatch with
+ *     whitespace target → boundary-extra. Past end of target → past-end
+ *     extra (cap at MAX_EXTRAS total).
  *
- *   • Backspace: delete one char (or word/token with ctrl/alt).
- *     Decrements free/missed sets as needed.
+ *   • Backspace: pop boundary extras at cursor first; once empty, delete
+ *     one char of input (or word/token with ctrl/alt). Decrements
+ *     free/missed sets as needed; popping an extra → +1 correctedMistakes.
  *
  *   • Completion: cursor === target.length AND input === target.
+ *     (Boundary extras don't block completion — they're just lingering
+ *     mistakes, same as past-end extras.)
  *
- * Invariant: cursor === input.length. The engine is pure: applyKey
+ * Invariant: cursor === input.length. Boundary extras live OUTSIDE input,
+ * keyed by the target index they precede. The engine is pure: applyKey
  * returns a new state without mutating its input.
  */
 
@@ -72,6 +88,15 @@ export type TypingState = {
   missedIndices: Set<number>;
   /** Precomputed runs of non-whitespace target chars. */
   words: Word[];
+  /**
+   * Boundary extras: typed-but-unmatched chars attached to a cursor
+   * position where target wants structural whitespace. Keyed by the
+   * target index they appear BEFORE. Renderer draws them inline (red)
+   * just left of the structural-whitespace cell. They count toward
+   * uncorrected mistakes and accuracy denominator but live outside the
+   * input/cursor alignment so the structural whitespace is preserved.
+   */
+  extras: Map<number, string>;
 };
 
 export type KeyMeta = {
@@ -119,7 +144,21 @@ export function startTyping(target: string): TypingState {
     freeIndices: new Set<number>(),
     missedIndices: new Set<number>(),
     words: computeWords(target),
+    extras: new Map<number, string>(),
   };
+}
+
+/** Sum of all boundary-extra chars across positions. */
+export function countBoundaryExtras(state: TypingState): number {
+  let n = 0;
+  for (const v of state.extras.values()) n += v.length;
+  return n;
+}
+
+/** True if we can still attach another extra somewhere (boundary or past-end). */
+function canAcceptExtra(state: TypingState): boolean {
+  const pastEnd = Math.max(0, state.input.length - state.target.length);
+  return countBoundaryExtras(state) + pastEnd < MAX_EXTRAS;
 }
 
 export function resetTyping(target: string): TypingState {
@@ -178,9 +217,10 @@ function handleSpace(state: TypingState, now: number): TypingState {
     return insertExpected(state, " ", now);
   }
   if (expected === "\n" || expected === "\t") {
-    // User must press Enter / Tab for these — a space here would be a
-    // wrong char in Monkeytype's model; following their lead, suppress.
-    return state;
+    // User pressed the wrong whitespace key. Treat as a boundary extra
+    // attached to the current cursor position — never consume the
+    // structural whitespace.
+    return appendBoundaryExtra(state, " ", now);
   }
 
   // Target is non-whitespace. Cursor is inside or at the start of a word.
@@ -233,6 +273,11 @@ function handleEnter(state: TypingState, now: number): TypingState {
   const expected = state.target[state.cursor];
   if (expected === undefined) {
     return appendExtra(state, "\n", now);
+  }
+  // Enter at a non-newline whitespace boundary (' ' or '\t') is a
+  // boundary extra, not a wrong-overwrite of the whitespace.
+  if (expected === " " || expected === "\t") {
+    return appendBoundaryExtra(state, "\n", now);
   }
   let next: TypingState =
     expected === "\n"
@@ -303,7 +348,24 @@ function handleChar(
   if (expected === ch) {
     return insertExpected(state, ch, now);
   }
+  // Wrong key at a structural-whitespace boundary: attach as boundary
+  // extra. The whitespace is preserved; the typed char renders as a red
+  // extra glyph immediately before it.
+  if (expected === " " || expected === "\n" || expected === "\t") {
+    return appendBoundaryExtra(state, ch, now);
+  }
   return insertWrong(state, ch, now);
+}
+
+function appendBoundaryExtra(
+  state: TypingState,
+  ch: string,
+  _now: number,
+): TypingState {
+  if (!canAcceptExtra(state)) return state;
+  const next = new Map(state.extras);
+  next.set(state.cursor, (next.get(state.cursor) ?? "") + ch);
+  return { ...state, extras: next };
 }
 
 function insertExpected(
@@ -369,6 +431,26 @@ function maybeComplete(state: TypingState, now: number): TypingState {
 const TOKEN_RE = /[A-Za-z0-9_$]/;
 
 function handleBackspace(state: TypingState, meta: KeyMeta): TypingState {
+  // Boundary extras at the current cursor are popped FIRST (they sit
+  // visually "to the left of" the current cursor cell).
+  const here = state.extras.get(state.cursor);
+  if (here && here.length > 0) {
+    // ctrl/meta/alt all clear the whole boundary buffer at once —
+    // boundary extras are conceptually a single "word fragment" attached
+    // to the current position, so any of the word/token-backspace
+    // modifiers should empty it in one shot rather than popping one char.
+    const popAll = meta.ctrl || meta.meta || meta.alt;
+    const popCount = popAll ? here.length : 1;
+    const remaining = here.slice(0, here.length - popCount);
+    const next = new Map(state.extras);
+    if (remaining.length === 0) next.delete(state.cursor);
+    else next.set(state.cursor, remaining);
+    return {
+      ...state,
+      extras: next,
+      correctedMistakes: state.correctedMistakes + popCount,
+    };
+  }
   if (state.cursor === 0) return state;
   const word = meta.ctrl || meta.meta;
   const token = meta.alt;

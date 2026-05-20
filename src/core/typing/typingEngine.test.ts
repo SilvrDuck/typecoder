@@ -238,23 +238,23 @@ describe("charStatuses", () => {
     expect(s.mistakes.length).toBe(0);
   });
 
-  it("suppresses space when target wants a newline", () => {
+  it("attaches space as a boundary extra when target wants a newline", () => {
     let s = startTyping("foo\nbar");
     for (const ch of "foo") s = applyKey(s, ch);
     expect(s.cursor).toBe(3);
-    s = applyKey(s, " "); // target[3] === '\n' → space is dropped
+    s = applyKey(s, " "); // target[3] === '\n' → boundary extra, not consumed
     expect(s.cursor).toBe(3);
     expect(s.input).toBe("foo");
-    expect(s.mistakes.length).toBe(0);
+    expect(s.extras.get(3)).toBe(" ");
   });
 
-  it("suppresses space when target wants a tab", () => {
+  it("attaches space as a boundary extra when target wants a tab", () => {
     let s = startTyping("a\tb");
     s = applyKey(s, "a");
-    s = applyKey(s, " "); // target[1] === '\t' → space is dropped
+    s = applyKey(s, " "); // target[1] === '\t' → boundary extra
     expect(s.cursor).toBe(1);
     expect(s.input).toBe("a");
-    expect(s.mistakes.length).toBe(0);
+    expect(s.extras.get(1)).toBe(" ");
   });
 });
 
@@ -348,5 +348,117 @@ describe("typingEngine — smart space", () => {
     expect(s.missedIndices.has(0)).toBe(false); // 'f' typed correctly
     expect(s.missedIndices.has(3)).toBe(false); // boundary space
     expect(s.freeChars).toBe(4);
+  });
+});
+
+describe("typingEngine — boundary extras", () => {
+  it("typing past the end of a word does not consume the boundary space", () => {
+    // target 'def void': typing 'abcde' wrongs 'abc' over 'def' (in-word
+    // wrongs), then 'de' attaches as boundary extras at index 3 — the
+    // structural space at index 3 is NOT consumed.
+    let s = startTyping("def void");
+    for (const ch of "abcde") s = applyKey(s, ch, { now: 1 });
+    expect(s.input).toBe("abc"); // only the in-word wrongs landed in input
+    expect(s.cursor).toBe(3); // cursor paused at the boundary space
+    expect(s.extras.get(3)).toBe("de");
+    expect(s.target[3]).toBe(" "); // boundary preserved
+    expect(s.mistakes.length).toBe(3); // 3 in-word wrongs (a,b,c)
+  });
+
+  it("typing wrong chars past a word does not bleed across newline", () => {
+    // target 'def foo:\n  bar': typing 10 wrong chars stays attached to
+    // word 'def'; the newline and indent remain pending.
+    let s = startTyping("def foo:\n  bar");
+    for (const ch of "abcdefghij") s = applyKey(s, ch, { now: 1 });
+    expect(s.input).toBe("abc");
+    expect(s.cursor).toBe(3);
+    expect(s.extras.get(3)).toBe("defghij");
+    // \n at index 8 still pending — no shift.
+    expect(s.target[8]).toBe("\n");
+  });
+
+  it("caps total extras (boundary + past-end) at MAX_EXTRAS", () => {
+    let s = startTyping("a b");
+    s = applyKey(s, "a", { now: 1 });
+    // 25 wrong chars at the boundary; only 20 should land.
+    for (let i = 0; i < 25; i++) s = applyKey(s, "x", { now: 1 });
+    expect(s.extras.get(1)?.length).toBe(20);
+  });
+
+  it("Enter at a space/tab boundary attaches as a boundary extra", () => {
+    let s = startTyping("a b");
+    s = applyKey(s, "a", { now: 1 });
+    s = applyKey(s, "Enter", { now: 1 });
+    expect(s.cursor).toBe(1);
+    expect(s.input).toBe("a");
+    expect(s.extras.get(1)).toBe("\n");
+  });
+
+  it("backspace pops boundary extras before consuming input", () => {
+    let s = startTyping("def void");
+    for (const ch of "abcde") s = applyKey(s, ch, { now: 1 });
+    expect(s.extras.get(3)).toBe("de");
+    expect(s.correctedMistakes).toBe(0);
+    s = applyKey(s, "Backspace", { now: 2 });
+    expect(s.extras.get(3)).toBe("d");
+    expect(s.correctedMistakes).toBe(1);
+    s = applyKey(s, "Backspace", { now: 3 });
+    expect(s.extras.has(3)).toBe(false);
+    expect(s.correctedMistakes).toBe(2);
+    // Next backspace falls through to the input.
+    s = applyKey(s, "Backspace", { now: 4 });
+    expect(s.input).toBe("ab");
+    expect(s.cursor).toBe(2);
+  });
+
+  it("backspace at cursor=0 with extras at 0 pops the extras", () => {
+    // target ' x': cursor=0, expected=' '. Type 'q' → boundary extra at 0.
+    let s = startTyping(" x");
+    s = applyKey(s, "q", { now: 1 });
+    expect(s.cursor).toBe(0);
+    expect(s.extras.get(0)).toBe("q");
+    s = applyKey(s, "Backspace", { now: 2 });
+    expect(s.extras.has(0)).toBe(false);
+    expect(s.correctedMistakes).toBe(1);
+  });
+
+  it("ctrl-backspace clears all boundary extras at cursor in one shot", () => {
+    let s = startTyping("a b");
+    s = applyKey(s, "a", { now: 1 });
+    for (const ch of "xyz") s = applyKey(s, ch, { now: 1 });
+    expect(s.extras.get(1)).toBe("xyz");
+    s = applyKey(s, "Backspace", { now: 2, ctrl: true });
+    expect(s.extras.has(1)).toBe(false);
+    expect(s.correctedMistakes).toBe(3);
+  });
+
+  it("alt-backspace also clears all boundary extras at cursor", () => {
+    let s = startTyping("a b");
+    s = applyKey(s, "a", { now: 1 });
+    for (const ch of "xyz") s = applyKey(s, ch, { now: 1 });
+    s = applyKey(s, "Backspace", { now: 2, alt: true });
+    expect(s.extras.has(1)).toBe(false);
+    expect(s.correctedMistakes).toBe(3);
+  });
+
+  it("ctrl-backspace at cursor=0 clears all extras at the leading boundary", () => {
+    let s = startTyping(" x");
+    for (const ch of "abc") s = applyKey(s, ch, { now: 1 });
+    expect(s.extras.get(0)).toBe("abc");
+    s = applyKey(s, "Backspace", { now: 2, ctrl: true });
+    expect(s.extras.has(0)).toBe(false);
+    expect(s.correctedMistakes).toBe(3);
+    expect(s.cursor).toBe(0);
+  });
+
+  it("Space at a newline boundary attaches as boundary extra (does not consume \\n)", () => {
+    let s = startTyping("foo\nbar");
+    for (const ch of "foo") s = applyKey(s, ch, { now: 1 });
+    expect(s.cursor).toBe(3);
+    s = applyKey(s, " ", { now: 2 });
+    expect(s.cursor).toBe(3);
+    expect(s.input).toBe("foo");
+    expect(s.extras.get(3)).toBe(" ");
+    expect(s.target[3]).toBe("\n"); // newline still pending
   });
 });

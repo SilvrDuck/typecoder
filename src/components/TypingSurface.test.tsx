@@ -119,6 +119,27 @@ describe("TypingSurface", () => {
     expect(screen.getByTestId("trailing-caret")).toBeInTheDocument();
   });
 
+  it("renders boundary extras inline before the structural whitespace cell", () => {
+    // target 'def void': typing 'abcde' should render abc-red over def,
+    // then 'de' as red extras BEFORE the structural space cell.
+    let state = startTyping("def void");
+    for (const ch of "abcde") state = applyKey(state, ch, { now: 1 });
+    render(
+      <TypingSurface state={state} onChange={() => {}} onComplete={() => {}} />,
+    );
+    const surface = screen.getByTestId("typing-surface");
+    // 3 in-word wrongs (abc) on the 'def' cells.
+    expect(surface.querySelectorAll('[data-status="wrong"]').length).toBe(3);
+    // 2 boundary extras (de) — rendered as extra glyphs.
+    const extras = surface.querySelectorAll('[data-status="extra"]');
+    expect(extras.length).toBe(2);
+    expect(extras[0].textContent).toBe("d");
+    expect(extras[1].textContent).toBe("e");
+    // Target text "void" still pending after the boundary.
+    const pending = surface.querySelectorAll('[data-status="pending"]');
+    expect(pending.length).toBeGreaterThanOrEqual(4); // ' ', v, o, i, d
+  });
+
   it("blocks Tab default behavior", () => {
     const state = startTyping("\tfoo");
     const onChange = vi.fn();
