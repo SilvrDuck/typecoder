@@ -5,6 +5,7 @@ import { TypingStats } from "./TypingStats";
 import { CompletionCard } from "./CompletionCard";
 import { Button } from "./Button";
 import { Kbd, Panel } from "./Panel";
+import { buildGithubFileHref } from "@/core/github/githubFileUrl";
 
 export function TypingScreen() {
   const session = useAppStore((s) => s.session);
@@ -78,6 +79,14 @@ export function TypingScreen() {
   const item = session.resolved.items[session.cursor];
   if (!item) return null;
 
+  const ghHref = buildGithubFileHref({
+    repo: session.resolved.repo,
+    ref: session.resolved.ref,
+    path: item.path,
+    startLine: item.startLine,
+    endLine: item.endLine,
+  });
+
   function handleComplete() {
     setShowCompletion(true);
   }
@@ -106,7 +115,20 @@ export function TypingScreen() {
             </button>{" "}
             <span className="text-ink-200">{session.source}</span>
             <span className="text-ink-600 mx-2">/</span>
-            <span className="text-ink-400">{item.path}</span>
+            {ghHref ? (
+              <a
+                href={ghHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-ink-400 hover:text-accent transition-colors underline-offset-2 hover:underline"
+                data-testid="typing-file-link"
+                aria-label={`Open ${item.path} on GitHub`}
+              >
+                {item.path}
+              </a>
+            ) : (
+              <span className="text-ink-400">{item.path}</span>
+            )}
             {item.symbol && (
               <>
                 <span className="text-ink-600 mx-2">·</span>
