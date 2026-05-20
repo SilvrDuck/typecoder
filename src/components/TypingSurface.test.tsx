@@ -39,6 +39,32 @@ describe("TypingSurface", () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it("shows the typed char (not the expected) on wrong cells", () => {
+    let state = startTyping("cat");
+    state = applyKey(state, "c", { now: 1 });
+    state = applyKey(state, "x", { now: 2 }); // wrong: expected 'a', typed 'x'
+    render(
+      <TypingSurface state={state} onChange={() => {}} onComplete={() => {}} />,
+    );
+    const surface = screen.getByTestId("typing-surface");
+    const wrongCell = surface.querySelector('[data-status="wrong"]');
+    expect(wrongCell).toBeTruthy();
+    expect(wrongCell!.textContent).toBe("x");
+  });
+
+  it("renders whitespace mistakes as visible glyphs", () => {
+    let state = startTyping("ab");
+    state = applyKey(state, " ", { now: 1 }); // wrong: expected 'a', typed ' '
+    render(
+      <TypingSurface state={state} onChange={() => {}} onComplete={() => {}} />,
+    );
+    const surface = screen.getByTestId("typing-surface");
+    const wrongCell = surface.querySelector('[data-status="wrong"]');
+    expect(wrongCell).toBeTruthy();
+    // Glyph should appear (·) instead of an empty space
+    expect(wrongCell!.textContent).toContain("·");
+  });
+
   it("blocks Tab default behavior", () => {
     const state = startTyping("\tfoo");
     const onChange = vi.fn();
