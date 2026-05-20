@@ -14,8 +14,9 @@
  *     (the boundary). Cursor does NOT advance; the structural whitespace
  *     is preserved. Mirrors Monkeytype's "word's extras" — typed chars
  *     past the end of a word stay attached to that word, never consume
- *     the boundary space or the next line. Capped at MAX_EXTRAS total
- *     (boundary + past-end).
+ *     the boundary space or the next line. Capped at MAX_EXTRAS PER
+ *     boundary — each word can independently accumulate up to the cap,
+ *     so blowing through one word doesn't starve the next one.
  *
  *   • SPACE:
  *       - target wants a literal space → matches (correct).
@@ -23,9 +24,13 @@
  *       - target wants a non-whitespace char:
  *           · cursor is at the START of the current word, nothing typed
  *             yet → no-op (Monkeytype rule 1.1).
- *           · cursor is INSIDE the word → smart-skip: mark the remaining
- *             positions of the word as "missed", advance cursor to end of
- *             word, then consume one trailing literal space if present.
+ *           · cursor is INSIDE the word but the word is NOT followed by
+ *             a literal space (i.e., it's the last word of the line/file
+ *             — boundary is \n, \t, or end-of-target) → no-op. Smart-skip
+ *             is only meaningful when there's an actual space to jump to.
+ *           · cursor is INSIDE a space-bounded word → smart-skip: mark
+ *             the remaining positions of the word as "missed", advance
+ *             cursor to end of word, then consume the trailing space.
  *       - past end of target → counts as an extra char.
  *     SPACE is never inserted as a "wrong" char.
  *
@@ -40,7 +45,7 @@
  *   • Regular printable keys: insert at cursor. Matches → correct.
  *     Mismatch with non-whitespace target → wrong. Mismatch with
  *     whitespace target → boundary-extra. Past end of target → past-end
- *     extra (cap at MAX_EXTRAS total).
+ *     extra (cap at MAX_EXTRAS per attachment point).
  *
  *   • Backspace: pop boundary extras at cursor first; once empty, delete
  *     one char of input (or word/token with ctrl/alt). Decrements
@@ -55,7 +60,13 @@
  * returns a new state without mutating its input.
  */
 
-export const MAX_EXTRAS = 20;
+/** Per-boundary cap for boundary extras AND the past-end overflow buffer.
+ *  Sized for code typing: words are short so a small cap (a) keeps the
+ *  line visually readable and (b) nudges the typist to stop mashing and
+ *  advance. The cap applies INDEPENDENTLY to each attachment point — so
+ *  word A filling its 8 extras doesn't prevent word B from getting its
+ *  own 8. */
+export const MAX_EXTRAS = 8;
 
 export type TypingMistake = {
   index: number;
@@ -155,10 +166,10 @@ export function countBoundaryExtras(state: TypingState): number {
   return n;
 }
 
-/** True if we can still attach another extra somewhere (boundary or past-end). */
-function canAcceptExtra(state: TypingState): boolean {
-  const pastEnd = Math.max(0, state.input.length - state.target.length);
-  return countBoundaryExtras(state) + pastEnd < MAX_EXTRAS;
+/** True if the boundary at `cursor` can still hold another extra. */
+function canAcceptBoundaryExtra(state: TypingState, cursor: number): boolean {
+  const here = state.extras.get(cursor)?.length ?? 0;
+  return here < MAX_EXTRAS;
 }
 
 export function resetTyping(target: string): TypingState {
@@ -230,6 +241,12 @@ function handleSpace(state: TypingState, now: number): TypingState {
   // Rule 1.1: at the start of a word with nothing typed → no-op.
   if (state.cursor === word.start) return state;
 
+  // Smart-skip is only meaningful when the boundary is a literal space.
+  // If the word ends at \n, \t, or end-of-target, SPACE is a no-op —
+  // marking the rest of the word as missed feels punitive when the user
+  // hasn't even reached a space boundary worth skipping to.
+  if (state.target[word.end] !== " ") return state;
+
   // Smart-skip to end of word.
   const skipFrom = state.cursor;
   const skipTo = word.end;
@@ -249,13 +266,10 @@ function handleSpace(state: TypingState, now: number): TypingState {
     });
   }
 
-  let nextInput = state.input + filler;
-  let nextCursor = skipTo;
-  // Consume one trailing literal space (a real user keystroke — NOT free).
-  if (state.target[skipTo] === " ") {
-    nextInput += " ";
-    nextCursor = skipTo + 1;
-  }
+  // target[skipTo] === " " is guaranteed by the boundary guard above.
+  // Consume that literal space as a real user keystroke (NOT free).
+  const nextInput = state.input + filler + " ";
+  const nextCursor = skipTo + 1;
 
   const next: TypingState = {
     ...state,
@@ -362,7 +376,7 @@ function appendBoundaryExtra(
   ch: string,
   _now: number,
 ): TypingState {
-  if (!canAcceptExtra(state)) return state;
+  if (!canAcceptBoundaryExtra(state, state.cursor)) return state;
   const next = new Map(state.extras);
   next.set(state.cursor, (next.get(state.cursor) ?? "") + ch);
   return { ...state, extras: next };

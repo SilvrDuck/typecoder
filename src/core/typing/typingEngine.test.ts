@@ -5,6 +5,7 @@ import {
   isComplete,
   resetTyping,
   charStatuses,
+  MAX_EXTRAS,
   type TypingState,
 } from "./typingEngine";
 
@@ -294,23 +295,35 @@ describe("typingEngine — smart space", () => {
     expect(s.freeChars).toBe(2);
   });
 
-  it("stops at newline boundary without consuming it", () => {
+  it("is a no-op for the last word of a line (boundary is \\n)", () => {
+    // SPACE inside a word whose boundary is a newline shouldn't smart-skip:
+    // there's no space to consume, and forcing 'missed' markers there is
+    // punitive when the user might just want to finish the word.
     let s = startTyping("foo\nbar");
     s = applyKey(s, "f", { now: 1 });
     s = applyKey(s, " ", { now: 2 });
-    expect(s.cursor).toBe(3); // stopped AT the newline
-    expect(s.input).toBe("foo");
-    expect(s.missedIndices.size).toBe(2); // 'o','o' missed
+    expect(s.cursor).toBe(1);
+    expect(s.input).toBe("f");
+    expect(s.missedIndices.size).toBe(0);
   });
 
-  it("skips to end of target when no boundary remains", () => {
+  it("is a no-op when target's last word has no trailing boundary at all", () => {
     let s = startTyping("foo");
     s = applyKey(s, "f", { now: 1 });
     s = applyKey(s, " ", { now: 2 });
-    expect(s.cursor).toBe(3);
-    expect(s.input).toBe("foo");
-    expect(isComplete(s)).toBe(true);
-    expect(s.missedIndices.size).toBe(2);
+    expect(s.cursor).toBe(1);
+    expect(s.input).toBe("f");
+    expect(isComplete(s)).toBe(false);
+    expect(s.missedIndices.size).toBe(0);
+  });
+
+  it("is a no-op when the boundary is a tab (not a space)", () => {
+    let s = startTyping("foo\tbar");
+    s = applyKey(s, "f", { now: 1 });
+    s = applyKey(s, " ", { now: 2 });
+    expect(s.cursor).toBe(1);
+    expect(s.input).toBe("f");
+    expect(s.missedIndices.size).toBe(0);
   });
 
   it("backspace clears missed flags so retyping scores normally", () => {
@@ -377,12 +390,31 @@ describe("typingEngine — boundary extras", () => {
     expect(s.target[8]).toBe("\n");
   });
 
-  it("caps total extras (boundary + past-end) at MAX_EXTRAS", () => {
+  it("caps boundary extras at MAX_EXTRAS per attachment point", () => {
     let s = startTyping("a b");
     s = applyKey(s, "a", { now: 1 });
-    // 25 wrong chars at the boundary; only 20 should land.
+    // 25 wrong chars at this boundary; only MAX_EXTRAS should land.
     for (let i = 0; i < 25; i++) s = applyKey(s, "x", { now: 1 });
-    expect(s.extras.get(1)?.length).toBe(20);
+    expect(s.extras.get(1)?.length).toBe(MAX_EXTRAS);
+  });
+
+  it("cap is PER boundary — filling word A's extras does not starve word B", () => {
+    // target 'a b c': fill the boundary after 'a', advance past the space,
+    // then verify the next boundary (after 'b') accepts its own full quota.
+    let s = startTyping("a b c");
+    s = applyKey(s, "a", { now: 1 });
+    for (let i = 0; i < MAX_EXTRAS + 5; i++) s = applyKey(s, "x", { now: 1 });
+    expect(s.extras.get(1)?.length).toBe(MAX_EXTRAS);
+    // Advance: SPACE consumes the boundary space, cursor lands at 'b'.
+    s = applyKey(s, " ", { now: 1 });
+    expect(s.cursor).toBe(2);
+    s = applyKey(s, "b", { now: 1 });
+    // Now at boundary 3 (the space before 'c'). Should accept a full quota
+    // independently of what's stored at boundary 1.
+    for (let i = 0; i < MAX_EXTRAS + 5; i++) s = applyKey(s, "y", { now: 1 });
+    expect(s.extras.get(3)?.length).toBe(MAX_EXTRAS);
+    // First boundary is untouched.
+    expect(s.extras.get(1)?.length).toBe(MAX_EXTRAS);
   });
 
   it("Enter at a space/tab boundary attaches as a boundary extra", () => {
