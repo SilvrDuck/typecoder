@@ -1,17 +1,41 @@
+import { useEffect, useCallback } from "react";
 import { Mark } from "./Mark";
 import { Panel, Pill } from "./Panel";
 import { Button } from "./Button";
+import { HotkeyHints } from "./HotkeyHints";
 import { CURATED_REPOS, type CuratedRepo } from "@/core/config/curated";
 import { useAppStore } from "@/state/useAppStore";
 import { startCuratedSession } from "@/core/session/sessionStarter";
+import { useEscapeBack } from "@/hooks/useEscapeBack";
 
 export function TypeRightAway() {
   const pickCurated = useAppStore((s) => s.pickCurated);
+  useEscapeBack();
 
-  function start(c: CuratedRepo) {
-    pickCurated(c);
-    void startCuratedSession(c.config, `${c.repo}@${c.config.ref ?? "main"}`);
-  }
+  const start = useCallback(
+    (c: CuratedRepo) => {
+      pickCurated(c);
+      void startCuratedSession(c.config, `${c.repo}@${c.config.ref ?? "main"}`);
+    },
+    [pickCurated],
+  );
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const idx = ["1", "2", "3"].indexOf(e.key);
+      if (idx === -1) return;
+      const c = CURATED_REPOS[idx];
+      if (c) {
+        e.preventDefault();
+        start(c);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [start]);
 
   return (
     <main className="min-h-screen px-6 py-12">
@@ -42,10 +66,21 @@ export function TypeRightAway() {
                 data-testid={`curated-start-${c.id}`}
               >
                 Start
+                <span className="opacity-40 ml-2 text-2xs">{i + 1}</span>
               </Button>
             </Panel>
           ))}
         </div>
+
+        <HotkeyHints
+          className="mt-10"
+          hints={[
+            { keys: ["1"], label: CURATED_REPOS[0].name },
+            { keys: ["2"], label: CURATED_REPOS[1].name },
+            { keys: ["3"], label: CURATED_REPOS[2].name },
+            { keys: ["Esc"], label: "back" },
+          ]}
+        />
       </div>
     </main>
   );

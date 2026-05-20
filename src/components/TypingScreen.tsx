@@ -191,7 +191,7 @@ export function TypingScreen() {
         <div className="flex justify-between items-center gap-4 mt-8 font-mono text-2xs text-ink-400">
           <div className="flex gap-3 flex-wrap">
             <span>
-              <Kbd>Tab</Kbd> next
+              <Kbd>Tab</Kbd> next (after done) / indent
             </span>
             <span>
               <Kbd>⇧Tab</Kbd> previous
@@ -200,7 +200,7 @@ export function TypingScreen() {
               <Kbd>⌘↵</Kbd> restart
             </span>
             <span>
-              <Kbd>Esc</Kbd> menu
+              <Kbd>Esc</Kbd> home
             </span>
           </div>
           <div className="flex gap-1 items-center">

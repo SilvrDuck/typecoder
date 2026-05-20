@@ -1,7 +1,9 @@
 import { Mark } from "./Mark";
 import { Panel } from "./Panel";
 import { Button } from "./Button";
+import { HotkeyHints } from "./HotkeyHints";
 import { useAppStore } from "@/state/useAppStore";
+import { useEscapeBack } from "@/hooks/useEscapeBack";
 
 export function ErrorScreen({
   title,
@@ -11,6 +13,7 @@ export function ErrorScreen({
   detail?: string;
 }) {
   const navigate = useAppStore((s) => s.navigate);
+  useEscapeBack();
   // Pick severity glyph color: rate_limit / network = warn; otherwise err.
   const isFatal =
     /not found|empty|invalid|symbol|path missing|forbade|forbidden/i.test(title);
@@ -61,6 +64,10 @@ export function ErrorScreen({
             </div>
           </div>
         </Panel>
+        <HotkeyHints
+          className="mt-6"
+          hints={[{ keys: ["Esc"], label: "back to landing" }]}
+        />
       </div>
     </main>
   );
