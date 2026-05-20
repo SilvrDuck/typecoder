@@ -30,9 +30,7 @@ test("session summary renders after completing items", async ({ page }) => {
   );
   await page.getByTestId("paste-start").click();
 
-  await expect(page.getByTestId("focus-start")).toBeVisible({ timeout: 10000 });
-  await page.getByTestId("focus-start").click();
-
+  await expect(page.getByTestId("typing-surface")).toBeVisible({ timeout: 10000 });
   await page.getByTestId("typing-surface").locator("textarea").focus();
 
   // Drive the engine by reading the live target + cursor after each

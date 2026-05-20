@@ -16,8 +16,7 @@ async function startDemoSession(
     }),
   );
   await page.getByTestId("paste-start").click();
-  await expect(page.getByTestId("focus-start")).toBeVisible({ timeout: 10000 });
-  await page.getByTestId("focus-start").click();
+  await expect(page.getByTestId("typing-surface")).toBeVisible({ timeout: 10000 });
 }
 
 test("Shift+Tab returns to the previous item", async ({ page }) => {
@@ -70,9 +69,8 @@ test("Shift+Tab returns to the previous item", async ({ page }) => {
   await expect(page.getByTestId("completion-card")).toBeVisible({ timeout: 5000 });
   await page.getByTestId("completion-next").click();
 
-  // Now on item 2 — focus card visible
-  await expect(page.getByTestId("focus-start")).toBeVisible();
-  await page.getByTestId("focus-start").click();
+  // Now on item 2 — typing surface directly
+  await expect(page.getByTestId("typing-surface")).toBeVisible();
 
   // Shift+Tab should bring us back to item 1
   await page.keyboard.press("Shift+Tab");
@@ -138,6 +136,6 @@ test("Skip uses in-app confirmation, not native confirm()", async ({ page }) => 
   // Open again, then confirm
   await page.getByTestId("typing-skip").click();
   await page.getByTestId("skip-confirm-yes").click();
-  // Advanced to item 2 — focus card shows
-  await expect(page.getByTestId("focus-start")).toBeVisible({ timeout: 3000 });
+  // Advanced to item 2 — typing surface remains
+  await expect(page.getByTestId("typing-surface")).toBeVisible({ timeout: 3000 });
 });

@@ -21,10 +21,7 @@ test("FastAPI curated session resolves against real GitHub", async ({ page }) =>
   await expect(page.getByText(/Fetching files from GitHub/i)).toBeVisible({
     timeout: 5000,
   });
-  await expect(page.getByTestId("focus-start")).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId("focus-start").click();
-
-  await expect(page.getByTestId("typing-surface")).toBeVisible();
+  await expect(page.getByTestId("typing-surface")).toBeVisible({ timeout: 30_000 });
   // The typing surface contains target characters from FastAPI source.
   // We assert non-empty by checking at least one pending span exists.
   await expect(
