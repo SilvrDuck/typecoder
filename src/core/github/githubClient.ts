@@ -41,12 +41,21 @@ export type GithubErrorKind =
   | "not_found"
   | "forbidden"
   | "empty_repo"
-  | "truncated_tree"
   | "file_too_large"
   | "binary_file"
+  | "validation_error"
   | "network"
   | "invalid_response"
   | "unknown";
+
+/**
+ * NOTE on tree truncation: GitHub's recursive tree endpoint returns
+ * `{ truncated: true }` with partial entries for huge repos. We surface
+ * that as `RepoTree.truncated` on the ok-path rather than an error,
+ * because the partial entries are still useful — the caller (UI) is
+ * responsible for showing the user a "showing partial results" banner.
+ * There is no `truncated_tree` error kind for this reason.
+ */
 
 export type GithubError = {
   kind: GithubErrorKind;
@@ -251,9 +260,11 @@ function mapHttp(res: Response): GithubError | null {
     const remaining = res.headers.get("x-ratelimit-remaining");
     const reset = res.headers.get("x-ratelimit-reset");
     if (remaining === "0") {
-      const retryAfter = reset
-        ? Math.max(0, Number(reset) * 1000 - Date.now())
-        : undefined;
+      const resetNum = reset !== null ? Number(reset) : NaN;
+      const retryAfter =
+        Number.isFinite(resetNum)
+          ? Math.max(0, resetNum * 1000 - Date.now())
+          : undefined;
       return {
         kind: "rate_limit",
         message: "GitHub rate limit reached.",
@@ -270,6 +281,13 @@ function mapHttp(res: Response): GithubError | null {
     return {
       kind: "empty_repo",
       message: "Repository appears to be empty.",
+      status,
+    };
+  }
+  if (status === 422) {
+    return {
+      kind: "validation_error",
+      message: "GitHub could not process this request.",
       status,
     };
   }

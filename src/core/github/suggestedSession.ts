@@ -54,6 +54,8 @@ const DEPRIORITIZED = [
   /__tests?__/i,
   /\.test\./i,
   /\.spec\./i,
+  // Go (foo_test.go), C/C++/Rust unit-test naming conventions
+  /_test\.(go|c|cc|cpp|h|hpp|rs)$/i,
   /\bexamples?\b/i,
   /\bfixtures?\b/i,
   /\bbench(?:marks?)?\b/i,

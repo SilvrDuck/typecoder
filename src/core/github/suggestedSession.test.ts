@@ -76,6 +76,26 @@ describe("buildSuggestedSession", () => {
   });
 });
 
+describe("buildSuggestedSession — empty signal", () => {
+  it("returns empty files when no usable source matches", () => {
+    const s = buildSuggestedSession([
+      blob("README.md"),
+      blob("LICENSE"),
+    ]);
+    expect(s.files).toEqual([]);
+    expect(s.estimatedSnippets).toBe(0);
+  });
+
+  it("depriorizes Go _test.go files", () => {
+    const entries = [
+      blob("internal/cache/lru.go"),
+      blob("internal/cache/lru_test.go"),
+    ];
+    const s = buildSuggestedSession(entries, { length: "short" });
+    expect(s.files[0].path).toBe("internal/cache/lru.go");
+  });
+});
+
 describe("detectDominantLanguage", () => {
   it("returns the most common preferred-ext language", () => {
     const entries = [

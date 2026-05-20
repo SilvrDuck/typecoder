@@ -83,6 +83,12 @@ describe("parseRepoInput", () => {
     expect(parseRepoInput("foo/bar baz")).toBeNull();
   });
 
+  it("rejects non-repo GitHub subdomains", () => {
+    expect(parseRepoInput("https://raw.githubusercontent.com/foo/bar/main/x.ts")).toBeNull();
+    expect(parseRepoInput("https://gist.github.com/foo/abc123")).toBeNull();
+    expect(parseRepoInput("https://api.github.com/repos/foo/bar")).toBeNull();
+  });
+
   it("trims whitespace", () => {
     expect(parseRepoInput("  vitejs/vite  ")).toEqual({ owner: "vitejs", repo: "vite" });
   });

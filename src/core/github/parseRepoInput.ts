@@ -35,6 +35,15 @@ export function parseRepoInput(input: string): ParsedRepo | null {
 
   // Strip protocol and host
   s = s.replace(/^https?:\/\//, "");
+  // Reject non-repo GitHub subdomains explicitly so a raw or gist URL
+  // doesn't silently parse into a bogus owner ("raw.githubusercontent.com").
+  if (
+    s.startsWith("raw.githubusercontent.com/") ||
+    s.startsWith("gist.github.com/") ||
+    s.startsWith("api.github.com/")
+  ) {
+    return null;
+  }
   s = s.replace(/^github\.com\//, "");
   // Strip query/hash
   s = s.replace(/[?#].*$/, "");
@@ -52,6 +61,11 @@ export function parseRepoInput(input: string): ParsedRepo | null {
 
   if (kind === "tree" || kind === "blob") {
     if (rest.length === 0) return null;
+    // NOTE: GitHub allows slashes in branch names ("feat/my-branch"). We
+    // can't disambiguate ref="feat/my-branch" from ref="feat", path="my-branch"
+    // without an extra API call. We use the first segment as ref and the
+    // rest as path; a slash-branch in a pasted URL will use the wrong ref
+    // and fall back to default-branch on the metadata fetch.
     const ref = rest[0];
     const path = rest.slice(1).join("/");
     return validate({ owner, repo, ref, path: path || undefined });
