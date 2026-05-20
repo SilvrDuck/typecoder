@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f package.json ] && command -v pnpm >/dev/null 2>&1; then pnpm -s lint --fix >/dev/null 2>&1 || true; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

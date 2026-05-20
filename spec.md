@@ -1,0 +1,1360 @@
+# CodeType — Full Build Spec
+
+Build a complete static web app called **CodeType**.
+
+CodeType is a polished typing trainer for real source code. It is inspired by typing.io and should feel as smooth, focused, and premium as Monkeytype, but for codebases.
+
+The user can either:
+
+1. **Type right away** using one of three curated public GitHub repos.
+2. **Custom** build or paste a guided typing config.
+
+No backend. No database. No auth. No accounts. No telemetry. No analytics. No cookies. No server-side GitHub proxy. No LLM calls.
+
+All GitHub requests must happen directly from the user’s browser.
+
+You may adjust implementation details as you build and test, but preserve the product goal. Test continuously. Use Playwright heavily. If tests or manual usage reveal UX issues, refine the spec and implementation while keeping the final behavior aligned with this document.
+
+When the user says “implement spec.md”, treat that as an instruction to execute the autonomous build workflow described in `CLAUDE.md` and `.claude/skills/code-type-autonomous-build/SKILL.md`. Do not ask the user for design choices or implementation choices. Make professional decisions, document them, and keep working until the acceptance criteria pass.
+
+---
+
+## Core idea
+
+The app helps developers understand real codebases by typing meaningful files, classes, and functions in a guided order.
+
+The product should feel like:
+
+> Monkeytype for real codebases.
+
+Not like:
+
+> a GitHub file browser with a typing widget.
+
+Typing is the center of the product. GitHub/config complexity should stay hidden until needed.
+
+---
+
+## Technical stack
+
+Use:
+
+- Vite
+- React
+- TypeScript
+- Tailwind CSS
+- Zustand
+- Zod
+- React Hook Form where useful
+- Vitest
+- Playwright
+- Browser `fetch` for GitHub API calls
+- Optional CodeMirror 6 only if helpful for syntax utilities
+- Optional Tree-sitter/WebAssembly if practical
+- Regex-based symbol extraction fallback
+
+Do not use:
+
+- Next.js
+- backend APIs
+- serverless functions
+- Firebase
+- Supabase
+- database
+- auth
+- GitHub OAuth
+- GitHub token input in MVP
+- telemetry
+- analytics
+- cookies
+- LLM API calls
+
+The app must build to static assets.
+
+---
+
+## Request architecture
+
+All GitHub requests happen from the user’s browser.
+
+The hosted site only serves HTML, CSS, and JS.
+
+Do not proxy GitHub requests through the app host.
+Do not add a backend.
+Do not use server-side GitHub tokens.
+Do not create a shared rate-limit bottleneck.
+
+Implications:
+
+- rate limits are per user/IP for unauthenticated requests
+- public repos only
+- private repos unsupported
+- no secrets in frontend code
+- minimize requests
+- cache only in memory during the session
+
+Use GitHub APIs directly from the browser:
+
+- repo metadata endpoint
+- recursive git tree endpoint
+- raw file/content endpoint as needed
+
+Fetch source files lazily.
+
+Do not bundle third-party source code.
+
+---
+
+## Landing page
+
+The first screen has exactly two paths.
+
+```txt
+CodeType
+
+Type real code.
+Understand real codebases.
+
+[ Type right away ]     [ Custom ]
+```
+
+Do not show repo inputs, config editors, schemas, file browsers, or advanced options on the first screen.
+
+The landing page should feel calm, premium, and minimal.
+
+---
+
+## Path 1: Type right away
+
+When the user chooses **Type right away**, show three curated repo cards.
+
+### Curated cards
+
+```txt
+Linux kernel
+C · systems programming
+Trace process, memory, and filesystem internals.
+torvalds/linux
+[ Start ]
+```
+
+```txt
+VS Code
+TypeScript · editor architecture
+Follow commands, extensions, services, and workbench flow.
+microsoft/vscode
+[ Start ]
+```
+
+```txt
+FastAPI
+Python · API framework
+Follow routing, validation, dependency injection, and request handling.
+fastapi/fastapi
+[ Start ]
+```
+
+Each card starts a bundled guided session config.
+
+Bundle configs here:
+
+```txt
+src/curated/linux.json
+src/curated/vscode.json
+src/curated/fastapi.json
+```
+
+Important:
+
+- bundle only the configs
+- do not bundle repo source code
+- when the user clicks Start, fetch required source files from GitHub in the user’s browser
+- resolve the first item quickly
+- preload upcoming items in the background
+- show clean loading states
+
+If curated config paths or symbols are stale, the app should show clear errors. During implementation, validate these configs against current GitHub contents and adjust them.
+
+---
+
+## Path 2: Custom
+
+When the user chooses **Custom**, show a clean hub with three cards.
+
+```txt
+Custom session
+
+[ Paste config ]
+Use a CodeType JSON config.
+
+[ Build config prompt ]
+Generate a prompt for Claude, ChatGPT, or another LLM.
+
+[ Load any repo ]
+Create a quick session from a public GitHub repo.
+```
+
+Use “Guided session”, not “Advanced mode”.
+
+---
+
+## Guided config format
+
+A guided config is portable JSON.
+
+It can be:
+
+- generated by an external LLM
+- edited by hand
+- shared by another user
+- bundled as a curated session
+
+Schema:
+
+```json
+{
+  "version": 1,
+  "repo": "owner/repo",
+  "ref": "main",
+  "title": "Understand the rendering pipeline",
+  "description": "A guided path through the codebase.",
+  "items": [
+    {
+      "level": "file",
+      "path": "src/index.ts",
+      "label": "Entry point"
+    },
+    {
+      "level": "function",
+      "path": "src/runtime/scheduler.ts",
+      "symbol": "scheduleWork",
+      "label": "Scheduler entry",
+      "startLine": 12,
+      "endLine": 80
+    },
+    {
+      "level": "class",
+      "path": "src/compiler/Parser.ts",
+      "symbol": "Parser",
+      "label": "Parser core"
+    }
+  ]
+}
+```
+
+TypeScript type:
+
+```ts
+type CodeTypeConfig = {
+  version: 1;
+  repo: string;
+  ref?: string;
+  title: string;
+  description?: string;
+  items: PracticeItem[];
+};
+
+type PracticeItem =
+  | {
+      level: "file";
+      path: string;
+      label: string;
+      startLine?: number;
+      endLine?: number;
+    }
+  | {
+      level: "class";
+      path: string;
+      symbol?: string;
+      label: string;
+      startLine?: number;
+      endLine?: number;
+    }
+  | {
+      level: "function";
+      path: string;
+      symbol?: string;
+      label: string;
+      startLine?: number;
+      endLine?: number;
+    };
+```
+
+Validation rules:
+
+- `version` required and must be `1`
+- `repo` required
+- `title` required
+- `items` required and non-empty
+- every item needs `level`, `path`, and `label`
+- `function` and `class` items need either:
+  - `symbol`, or
+  - valid `startLine` and `endLine`
+- if line range is missing, resolve by symbol extraction
+- if path missing, show item-level error
+- if symbol cannot be resolved, show item-level error
+- if line range invalid, show item-level error
+- malformed JSON gets friendly error output
+- valid JSON but invalid schema gets friendly error output
+
+After successful validation, show a preview. Do not auto-start.
+
+Preview:
+
+```txt
+Trace Vite's main execution path
+
+12 typing items
+8 functions
+3 files
+1 class
+
+1. CLI entry point
+2. Resolve config
+3. Create dev server
+...
+[ Start guided session ]
+```
+
+---
+
+## Prompt builder
+
+The site must not call an LLM.
+
+The prompt builder generates a copyable prompt for an external LLM.
+
+The flow:
+
+1. User enters repo.
+2. User optionally enters ref.
+3. User chooses a goal template.
+4. UI updates live.
+5. User copies prompt.
+6. User pastes prompt into Claude, ChatGPT, etc.
+7. External LLM returns JSON.
+8. User pastes JSON back into CodeType.
+
+### Prompt builder UI
+
+```txt
+Build config prompt
+
+Repository
+[ github.com/vitejs/vite ]
+
+Ref
+[ main ]
+
+Goal
+[ Trace the main execution path ▼ ]
+
+Best for
+Understanding how execution moves through the project.
+
+This prompt will ask the LLM to:
+• find entry points
+• follow major calls
+• prefer functions over files
+• avoid generated code
+
+[ Copy prompt ]
+[ Copy schema ]
+[ Clear ]
+```
+
+Changing the dropdown must update:
+
+- helper text
+- “Best for”
+- bullet list
+- generated prompt preview
+- optional custom field visibility
+
+Templates:
+
+```txt
+Understand the codebase
+Trace the main execution path
+Learn the public API
+Focus on architecture
+Focus on tests
+Focus on performance-sensitive code
+Focus on data model
+Focus on UI components
+Focus on build/tooling
+Custom focus
+```
+
+For `Custom focus`, reveal:
+
+```txt
+Focus
+[ understand plugin loading and lifecycle ]
+```
+
+### Template behavior
+
+Each template must generate different prompt instructions.
+
+#### Understand the codebase
+
+Best for first pass through an unfamiliar repo.
+
+Prioritize:
+
+- entry points
+- major modules
+- public APIs
+- core abstractions
+- representative files
+
+Avoid:
+
+- deep internals too early
+- generated files
+- repetitive utilities
+
+#### Trace the main execution path
+
+Best for understanding runtime flow.
+
+Prioritize:
+
+- CLI or app entry points
+- config loading
+- request/event handling
+- orchestration functions
+- main call chain
+
+Avoid:
+
+- isolated helpers
+- test-only paths
+- unrelated modules
+
+#### Learn the public API
+
+Best for understanding how users interact with the library/app.
+
+Prioritize:
+
+- exported functions
+- public classes
+- package entry points
+- documented APIs
+- examples that map to internals
+
+Avoid:
+
+- private implementation unless necessary
+
+#### Focus on architecture
+
+Best for mapping project layers.
+
+Prioritize:
+
+- module boundaries
+- abstractions
+- dependency direction
+- registries
+- services
+- interfaces
+
+Avoid:
+
+- leaf utilities
+
+#### Focus on tests
+
+Best for understanding behavior through examples.
+
+Prioritize:
+
+- high-signal tests
+- test setup helpers
+- integration tests
+- behavior-focused cases
+
+Avoid:
+
+- snapshots
+- fixtures
+- repetitive generated tests
+
+#### Focus on performance-sensitive code
+
+Best for hot paths.
+
+Prioritize:
+
+- parsers
+- schedulers
+- caches
+- tight loops
+- workers
+- model execution
+- async coordination
+
+Avoid:
+
+- broad files unless necessary
+
+#### Focus on data model
+
+Best for understanding domain objects.
+
+Prioritize:
+
+- schemas
+- core classes
+- model definitions
+- serializers
+- validators
+- persistence boundaries
+
+#### Focus on UI components
+
+Best for frontend repos.
+
+Prioritize:
+
+- root components
+- layout components
+- stateful components
+- interaction-heavy components
+- design-system primitives
+
+#### Focus on build/tooling
+
+Best for tooling repos.
+
+Prioritize:
+
+- CLI
+- config
+- build pipeline
+- plugins
+- transforms
+- bundling
+- task orchestration
+
+### Generated prompt
+
+Prompt must instruct the external LLM to:
+
+- inspect the public repo
+- use real paths
+- use real symbols
+- not invent files
+- not invent functions/classes
+- produce JSON only
+- follow the exact schema
+- order items pedagogically
+- prefer functions/classes over whole files
+- keep snippets reasonable for typing
+- avoid generated files, lockfiles, vendored code, minified code, huge files
+
+Example generated prompt:
+
+```txt
+You are generating a CodeType guided typing config.
+
+Repository: vitejs/vite
+Ref: main
+Outcome: Trace the main execution path
+
+Inspect the repository and produce JSON only.
+
+The config should guide a developer through the codebase by making them type important files, classes, and functions in a useful learning order.
+
+Schema:
+{
+  "version": 1,
+  "repo": "vitejs/vite",
+  "ref": "main",
+  "title": "string",
+  "description": "string",
+  "items": [
+    {
+      "level": "file | class | function",
+      "path": "string",
+      "symbol": "string optional unless function/class without line range",
+      "label": "string",
+      "startLine": "number optional",
+      "endLine": "number optional"
+    }
+  ]
+}
+
+Rules:
+- Output valid JSON only.
+- Use real paths from the repo.
+- Use real symbols from the repo.
+- Prefer 8 to 20 items.
+- Prefer functions/classes over full files.
+- Order items so a developer can understand the codebase progressively.
+- Keep each item useful for typing practice.
+- Avoid generated files, lockfiles, vendored code, huge files, and minified files.
+- Do not invent paths.
+- Do not invent symbols.
+- Include short labels explaining why each item matters.
+```
+
+---
+
+## Load any repo
+
+Inside Custom, the user may choose **Load any repo**.
+
+Accept repo input formats:
+
+```txt
+owner/repo
+https://github.com/owner/repo
+https://github.com/owner/repo/tree/branch
+https://github.com/owner/repo/blob/branch/path/to/file.ts
+```
+
+Best-effort parse owner, repo, ref, and path.
+
+After loading, show a suggested session first.
+
+Do not immediately show a full file browser.
+
+```txt
+vitejs/vite loaded
+
+Suggested session
+12 snippets · TypeScript · medium difficulty
+
+[ Start typing ]
+[ Customize ]
+```
+
+Customize reveals:
+
+```txt
+Session length
+Short · Medium · Long
+
+Snippet type
+Functions · Classes · Files · Mixed
+
+Difficulty
+Readable · Realistic · Brutal
+
+Language
+[ TypeScript ]
+
+Path search
+[ src/node ]
+
+Selected queue
+...
+```
+
+Difficulty meanings:
+
+- `Readable`: shorter snippets, skips dense generics and long lines
+- `Realistic`: normal source code
+- `Brutal`: allows long lines, complex syntax, config-heavy files, regexes
+
+---
+
+## Repo loading
+
+For any public repo:
+
+1. Parse repo input.
+2. Fetch repo metadata.
+3. Resolve default branch if no ref.
+4. Fetch recursive tree.
+5. Filter usable source files.
+6. Generate suggested session.
+7. Fetch files lazily.
+
+Filter out:
+
+```txt
+node_modules/
+vendor/
+dist/
+build/
+.git/
+coverage/
+target/
+.next/
+out/
+.cache/
+venv/
+__pycache__/
+```
+
+Skip files:
+
+```txt
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+Cargo.lock
+poetry.lock
+Pipfile.lock
+*.min.js
+*.map
+```
+
+Skip binary-looking files.
+
+Skip files over 250 KB by default.
+
+Prefer source extensions:
+
+```txt
+.ts
+.tsx
+.js
+.jsx
+.py
+.rs
+.go
+.java
+.kt
+.c
+.h
+.cpp
+.hpp
+.cs
+.rb
+.php
+.swift
+.scala
+.clj
+.ex
+.exs
+```
+
+Use in-memory caches:
+
+```ts
+repoMetadataCache
+repoTreeCache
+fileTextCache
+symbolCache
+resolvedConfigCache
+```
+
+Do not persist source code to localStorage.
+
+---
+
+## Symbol extraction
+
+Implement:
+
+```ts
+type CodeSymbol = {
+  level: "class" | "function";
+  symbol: string;
+  path: string;
+  startLine: number;
+  endLine: number;
+  language: string;
+};
+
+async function extractSymbols(path: string, code: string): Promise<CodeSymbol[]>;
+```
+
+Priority:
+
+1. Tree-sitter if easy and stable.
+2. Regex extraction.
+3. Empty result.
+
+Tree-sitter support, if implemented:
+
+- TypeScript
+- TSX
+- JavaScript
+- JSX
+- Python
+- Go
+- Rust
+
+Regex fallback should cover:
+
+- TypeScript
+- JavaScript
+- Python
+- C
+- C++
+- Java
+- Kotlin
+- C#
+- Ruby
+- PHP
+- Swift
+- Scala
+- Go
+- Rust
+
+Symbol extraction must never crash the app.
+
+If extraction fails:
+
+- return empty list
+- show unresolved item only when needed
+- log non-intrusive warning in dev mode
+
+---
+
+## Typing screen
+
+Typing mode is sacred.
+
+No sidebars.
+No repo browser.
+No config editor.
+No prompt generator.
+
+Only show:
+
+```txt
+repo/ref                          42 wpm · 98% · 2 mistakes
+src/node/config.ts · resolveConfig
+
+                 typing surface
+
+3 / 12          Restart          Skip          Menu
+```
+
+The typing surface must be custom-rendered. Do not rely on a visible textarea as the main UI.
+
+Use hidden input or keyboard event capture plus rendered character spans.
+
+Behavior:
+
+- exact code typing
+- whitespace matters
+- newlines matter
+- tabs display cleanly
+- tab key inserts equivalent indentation when expected
+- spaces may be subtly visible when relevant
+- preserve original formatting
+- current char has smooth caret
+- correct chars are muted/positive
+- wrong chars are calmly marked
+- current mistake is visible
+- corrected mistakes do not stay visually loud
+- extra typed chars at line end are visible as errors
+- long lines support readable wrapping or horizontal mode
+- user can restart current item
+- user can skip with confirmation if not complete
+
+Keyboard:
+
+```txt
+Esc                pause/menu
+Tab                next item when complete
+Shift+Tab          previous item
+Cmd/Ctrl+Enter     restart item
+Cmd/Ctrl+Backspace delete word
+Alt+Backspace      delete token-ish chunk
+Enter              type newline
+```
+
+Command palette is optional. Do not let it delay MVP.
+
+---
+
+## Per-item focus card
+
+For guided sessions, before each item optionally show:
+
+```txt
+resolveConfig
+
+Why this matters:
+Loads and normalizes user config before the dev server starts.
+
+[ Start ]
+[ Skip intro cards ]
+```
+
+For curated sessions, write good labels/descriptions.
+
+For random sessions, this card can be minimal or skipped.
+
+---
+
+## Typing engine
+
+Implement core typing behavior as pure functions.
+
+```ts
+type TypingState = {
+  target: string;
+  input: string;
+  cursor: number;
+  startedAt?: number;
+  completedAt?: number;
+  mistakes: TypingMistake[];
+  correctedMistakes: number;
+};
+
+type TypingMistake = {
+  index: number;
+  expected: string;
+  actual: string;
+  timestamp: number;
+};
+```
+
+Functions:
+
+```ts
+startTyping(target: string): TypingState;
+applyKey(state: TypingState, key: string, meta: KeyMeta): TypingState;
+calculateMetrics(state: TypingState, now: number): TypingMetrics;
+isComplete(state: TypingState): boolean;
+resetTyping(target: string): TypingState;
+```
+
+Metrics:
+
+```ts
+type TypingMetrics = {
+  rawWpm: number;
+  codeWpm: number;
+  accuracy: number;
+  mistakes: number;
+  correctedMistakes: number;
+  uncorrectedMistakes: number;
+  elapsedMs: number;
+  charsTyped: number;
+  progress: number;
+};
+```
+
+Track weak spots:
+
+- characters frequently mistyped
+- lines where mistakes happened
+- snippets with lowest accuracy
+
+Keep all of this in memory only.
+
+---
+
+## Results screen
+
+At item completion, show a mini result card:
+
+```txt
+Snippet complete
+
+43 code WPM
+97.2% accuracy
+4 corrected mistakes
+
+[ Next ]
+[ Restart ]
+```
+
+At session completion:
+
+```txt
+Session complete
+
+48 code WPM
+96.4% accuracy
+12 snippets completed
+18 corrected mistakes
+
+Hardest characters
+{ } _ :
+
+Most error-prone lines
+src/node/config.ts:142
+src/node/server/index.ts:88
+
+[ Practice weak spots ]
+[ Restart session ]
+[ New session ]
+```
+
+`Practice weak spots` creates a temporary in-memory mini-session from the user’s hardest lines.
+
+Do not persist results.
+
+---
+
+## Visual design
+
+Dark-first.
+
+The UI must not look like a generic AI-generated website.
+
+Avoid:
+
+- purple-blue AI gradients
+- floating blobs
+- generic hero illustrations
+- glassmorphism for no reason
+- giant rounded SaaS cards everywhere
+- emoji-heavy UI
+- stock “AI assistant” language
+- fake dashboard chrome
+- noisy animations
+- cluttered forms
+- excessive borders and shadows
+- default Tailwind template feel
+
+Prefer:
+
+- premium developer-tool feel
+- dark-first
+- strong typography
+- quiet confidence
+- tight spacing
+- sharp hierarchy
+- calm accent color
+- beautiful empty/loading/error states
+- keyboard-first flows
+- responsive but desktop-optimized layout
+- motion only where it improves typing feedback
+- a typing surface that feels crafted
+
+Do not clone Monkeytype branding or assets.
+
+Use the quality bar, not the identity.
+
+---
+
+## Autonomous design requirement
+
+The user does not want to design the product manually.
+
+For visual/product design decisions:
+
+- make a strong default choice
+- document the reasoning briefly
+- proceed
+- only ask the user if there is a product-level ambiguity that changes functionality
+
+Do not ask the user to choose:
+
+- color palette
+- type scale
+- spacing
+- card style
+- button style
+- layout variants
+- animation style
+- icon style
+- landing page composition
+
+Before implementing major UI code, use the autonomous Pencil design workflow in `.claude/skills/pencil-autonomous-product-design/SKILL.md`.
+
+If Pencil is available, use it.
+If Pencil is not available in the local Claude Code environment, create equivalent high-fidelity design artifacts manually in `docs/design/` using Markdown, HTML, SVG, or static screenshotable prototypes, then continue. Do not block waiting for the user.
+
+The design pass must produce:
+
+- mockups or preview artifacts for all core screens
+- `docs/design-system.md`
+- `docs/design-decision.md`
+- a chosen direction
+- rejected directions
+- implementation notes
+
+---
+
+## Accessibility
+
+Minimum:
+
+- keyboard navigable
+- visible focus states
+- sufficient contrast
+- reduced-motion support
+- `aria-live` for validation errors and completion
+- clear labels for typing area
+- Esc opens pause/menu and releases typing focus
+- no permanent keyboard trap
+
+---
+
+## Error handling
+
+Handle and test:
+
+- invalid repo input
+- repo not found
+- private repo
+- empty repo
+- no supported files
+- GitHub rate limit exceeded
+- tree truncated
+- file too large
+- binary file
+- unsupported language
+- malformed config JSON
+- invalid config schema
+- path missing from repo
+- symbol missing from file
+- invalid line range
+- network failure
+- GitHub 403
+- GitHub 404
+- GitHub 409
+- GitHub 422
+
+Error messages should be human-readable and actionable.
+
+Examples:
+
+```txt
+GitHub rate limit reached. Try again later or choose a curated demo.
+```
+
+```txt
+Could not find src/foo.ts in this repository.
+```
+
+```txt
+Item 4 asks for function parseConfig, but no matching symbol was found in src/config.ts.
+```
+
+```txt
+This repository is too large for GitHub’s recursive tree response. Showing partial results.
+```
+
+---
+
+## Demo mode
+
+Include a fully local demo repo for testing/offline use.
+
+Fake repo:
+
+```txt
+demo/tiny-codebase
+```
+
+Include 3 to 5 tiny files:
+
+- TypeScript
+- Python
+- Rust or C
+
+This demo may bundle source because it is original test/demo code.
+
+Use it for:
+
+- Playwright tests
+- smoke testing
+- offline development
+- first-run fallback if GitHub fails
+
+---
+
+## Suggested source structure
+
+```txt
+src/
+  app/
+    App.tsx
+    routes.ts
+  components/
+    Button.tsx
+    Card.tsx
+    ErrorBanner.tsx
+    Landing.tsx
+    CuratedRepoCard.tsx
+    CustomHub.tsx
+    PromptBuilder.tsx
+    ConfigEditor.tsx
+    RepoLoader.tsx
+    SuggestedSession.tsx
+    CustomizeSession.tsx
+    TypingSurface.tsx
+    TypingStats.tsx
+    FocusCard.tsx
+    SessionSummary.tsx
+  core/
+    github/
+      parseRepoInput.ts
+      githubClient.ts
+      repoTree.ts
+      fileFilters.ts
+      fileContent.ts
+    config/
+      schema.ts
+      resolveConfig.ts
+      promptTemplates.ts
+      curated.ts
+    typing/
+      typingEngine.ts
+      metrics.ts
+      normalizeCode.ts
+      weakSpots.ts
+      sessionQueue.ts
+    symbols/
+      structureExtractor.ts
+      treeSitter.ts
+      regexExtractors.ts
+      languages.ts
+    demo/
+      tinyRepo.ts
+  curated/
+    linux.json
+    vscode.json
+    fastapi.json
+  state/
+    useAppStore.ts
+  styles/
+    globals.css
+  tests/
+    fixtures/
+```
+
+---
+
+## Tests
+
+Use Vitest and Playwright.
+
+Run tests continuously while building.
+
+Do not rely on live GitHub in automated tests. Mock GitHub API responses in Playwright.
+
+Do at least one manual live test against public repos.
+
+### Vitest
+
+Test:
+
+- repo input parsing
+- file filtering
+- config schema validation
+- config resolution
+- prompt generation
+- typing engine
+- metrics
+- weak spot extraction
+- regex symbol extraction
+- curated config shape
+
+### Playwright
+
+Test:
+
+1. landing page renders
+2. Type right away shows three curated cards
+3. clicking curated card starts loading session
+4. demo/local fallback session works without network
+5. Custom opens custom hub
+6. Paste config validates malformed JSON
+7. Paste config rejects invalid schema
+8. Paste config accepts valid demo config
+9. Prompt builder updates when dropdown changes
+10. Prompt builder reveals custom focus field
+11. Copy prompt button works
+12. Load any repo rejects malformed repo
+13. typing correct characters advances caret
+14. wrong character marks error
+15. backspace corrects input
+16. completion shows result card
+17. session summary renders
+18. keyboard shortcuts work
+19. reduced-motion mode does not break UI
+20. mobile/tablet smoke layout works
+21. major error states render cleanly
+22. browser console has no errors during happy paths
+
+Use mocked GitHub responses for:
+
+- repo metadata
+- tree
+- file contents
+- rate limit
+- 404
+- truncated tree
+
+---
+
+## README
+
+Write a README covering:
+
+- what CodeType is
+- privacy/stateless guarantees
+- browser-side GitHub requests
+- public repos only
+- GitHub rate-limit caveat
+- how curated sessions work
+- how custom configs work
+- how prompt builder works
+- how to run locally
+- how to build
+- how to test
+- how to deploy static files
+- unsupported cases
+
+---
+
+## Acceptance criteria
+
+The app is done when:
+
+- `pnpm install` works
+- `pnpm dev` works
+- `pnpm build` succeeds
+- `pnpm test` succeeds
+- `pnpm playwright test` succeeds
+- landing page has only two main paths
+- Type right away shows Linux, VS Code, and FastAPI
+- curated sessions use bundled configs but fetch source from GitHub in browser
+- Custom shows Paste config, Build config prompt, and Load any repo
+- prompt builder is reactive and polished
+- config validation is friendly and useful
+- typing screen is focused and polished
+- typing engine handles code accurately
+- typing metrics work
+- session summary works
+- Pencil or equivalent autonomous design pass completed
+- chosen design direction documented
+- rejected directions documented
+- design system documented
+- Playwright screenshots compared against chosen design
+- visible drift fixed
+- product-reviewer approves UI polish
+- no backend exists
+- no persistence/account/telemetry exists
+- no TODO placeholders or fake core flows remain
+- all major error states have UI
+- README is complete
+
+---
+
+## Implementation priorities
+
+Prioritize in this order:
+
+1. polished typing UX
+2. landing page simplicity
+3. autonomous design quality
+4. curated sessions
+5. config validation/resolution
+6. prompt builder
+7. browser-side GitHub loading
+8. tests
+9. parser sophistication
+
+If Tree-sitter slows you down, use regex extraction first. Parser perfection must not block the product.
+
+If CodeMirror complicates the typing surface, do not use it for the main typing UI.
+
+The final product should feel fast, quiet, sharp, and useful.
