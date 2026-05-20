@@ -202,7 +202,7 @@ export function SessionSummary() {
         </div>
 
         <p className="font-mono text-2xs text-ink-500 mt-8 tracking-wider">
-          results live only in this tab — refresh wipes them <Pill>stateless</Pill>
+          state lives in the URL — copy the link to come back later <Pill>stateless</Pill>
         </p>
       </div>
     </main>

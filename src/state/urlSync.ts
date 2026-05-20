@@ -26,7 +26,13 @@ import type { SnippetResult } from "@/core/typing/weakSpots";
  * start of the current snippet, with prior snippets' stats preserved.
  */
 
-let _writingFromState = false;
+/**
+ * Track the last hash we wrote ourselves. When `hashchange` fires, if
+ * the new hash matches our last write we ignore it (we caused it). Any
+ * other hash change is the user (back/forward, edit, paste) and we
+ * re-bootstrap.
+ */
+let _lastWrittenHash: string | null = null;
 
 export function installUrlSync() {
   if (typeof window === "undefined") return;
@@ -44,7 +50,7 @@ export function installUrlSync() {
   });
 
   window.addEventListener("hashchange", () => {
-    if (_writingFromState) return;
+    if (window.location.hash === _lastWrittenHash) return;
     bootstrap();
   });
 }
@@ -128,6 +134,10 @@ async function restoreSession(
         rawWpm: r.wpm,
         codeWpm: r.wpm,
         accuracy: r.acc,
+        // The encoded `mistakes` field stores the total (corrected +
+        // uncorrected). On restore we no longer know the split, so we
+        // approximate by attributing it all to uncorrected. The summary
+        // screen reads `mistakes` for the aggregate, which is correct.
         mistakes: r.mistakes,
         correctedMistakes: 0,
         uncorrectedMistakes: r.mistakes,
@@ -160,12 +170,9 @@ function writeUrl(view: View, session: SessionRecord | null, mode: "push" | "rep
   const param = computeSessionParam(view, session);
   const newHash = buildHash(view.name, param);
   if (window.location.hash === newHash) return;
-  _writingFromState = true;
+  _lastWrittenHash = newHash;
   if (mode === "push") history.pushState(null, "", newHash);
   else history.replaceState(null, "", newHash);
-  setTimeout(() => {
-    _writingFromState = false;
-  }, 0);
 }
 
 function computeSessionParam(
@@ -176,12 +183,7 @@ function computeSessionParam(
   if (view.name !== "typing" && view.name !== "summary") return undefined;
 
   const curated = useAppStore.getState().curated;
-  // Identity check: curated cards reuse the same config object when
-  // calling startCuratedSession, so identity holds for genuine curated
-  // sessions. Paste/build paths produce fresh config objects.
-  const isCurated = !!curated && curated.config === session.config;
-
-  const encoded: EncodedSession = isCurated
+  const encoded: EncodedSession = isCuratedSession(curated, session)
     ? {
         kind: "curated",
         id: curated.id,
@@ -198,6 +200,21 @@ function computeSessionParam(
   return encodeSession(encoded);
 }
 
+/**
+ * Identity check: curated cards reuse the same config object when
+ * calling startCuratedSession, so identity holds for genuine curated
+ * sessions. Paste/build paths produce fresh config objects.
+ *
+ * Used by both writeUrl and the share button so they cannot disagree
+ * for the same session.
+ */
+function isCuratedSession(
+  curated: CuratedRepo | null,
+  session: SessionRecord,
+): curated is CuratedRepo {
+  return !!curated && curated.config === session.config;
+}
+
 function encodeResult(r: SnippetResult): EncodedSnippetResult {
   const m =
     r.restoredMetrics ?? calculateMetrics(r.state, r.state.completedAt ?? Date.now());
@@ -206,7 +223,10 @@ function encodeResult(r: SnippetResult): EncodedSnippetResult {
     acc: Number(m.accuracy.toFixed(3)),
     ms: m.elapsedMs,
     chars: m.charsTyped,
-    mistakes: m.uncorrectedMistakes,
+    // m.mistakes = uncorrected + corrected (total ever). The summary
+    // screen aggregates this field, so persist the same total to keep
+    // restored sessions consistent with live ones.
+    mistakes: m.mistakes,
     label: r.label,
     path: r.path ?? "",
   };
@@ -223,12 +243,7 @@ export function buildShareUrlForCurrentSession(): string {
   if (!session) throw new Error("No active session to share.");
 
   const curated = state.curated;
-  const isCurated =
-    !!curated &&
-    session.config.repo === curated.repo &&
-    session.config.title === curated.config.title;
-
-  const encoded: EncodedSession = isCurated
+  const encoded: EncodedSession = isCuratedSession(curated, session)
     ? { kind: "curated", id: curated.id }
     : { kind: "config", config: session.config, source: session.source };
 

@@ -47,6 +47,34 @@ describe("urlState", () => {
     expect(decodeSession("")).toBeNull();
   });
 
+  it("decodeSession rejects a kind:config with a schema-invalid config", () => {
+    // Missing required fields (no items, no repo).
+    const bad = base64UrlEncode(
+      JSON.stringify({ kind: "config", source: "x", config: { hax: true } }),
+    );
+    expect(decodeSession(bad)).toBeNull();
+  });
+
+  it("decodeSession rejects a kind:config without a source", () => {
+    const bad = base64UrlEncode(
+      JSON.stringify({
+        kind: "config",
+        config: {
+          version: 1,
+          repo: "demo/tiny-codebase",
+          title: "x",
+          items: [{ level: "file", path: "a.ts", label: "x" }],
+        },
+      }),
+    );
+    expect(decodeSession(bad)).toBeNull();
+  });
+
+  it("decodeSession rejects a kind:curated without a string id", () => {
+    const bad = base64UrlEncode(JSON.stringify({ kind: "curated" }));
+    expect(decodeSession(bad)).toBeNull();
+  });
+
   it("base64url uses URL-safe alphabet (no +/= padding)", () => {
     const enc = base64UrlEncode("ÿþý"); // forces +/ in plain b64
     expect(enc).not.toMatch(/[+/=]/);
