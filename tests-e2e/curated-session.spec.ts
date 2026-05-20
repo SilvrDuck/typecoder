@@ -46,11 +46,7 @@ test("curated session: load, type, complete one item, advance", async ({ page })
     timeout: 5000,
   });
 
-  // Typing screen appears (skip the focus card)
-  await expect(page.getByTestId("focus-start")).toBeVisible({ timeout: 10000 });
-  await page.getByTestId("focus-start").click();
-
-  await expect(page.getByTestId("typing-surface")).toBeVisible();
+  await expect(page.getByTestId("typing-surface")).toBeVisible({ timeout: 10000 });
   await expect(page.getByTestId("typing-stats")).toBeVisible();
 
   // Type a correct first character ('c' from "class FastAPI…")

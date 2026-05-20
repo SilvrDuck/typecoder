@@ -11,9 +11,7 @@ test("typing screen: Esc returns to landing", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("landing-type-right-away").click();
   await page.getByTestId("curated-start-fastapi").click();
-  await expect(page.getByTestId("focus-start")).toBeVisible({ timeout: 10000 });
-  await page.getByTestId("focus-start").click();
-  await expect(page.getByTestId("typing-surface")).toBeVisible();
+  await expect(page.getByTestId("typing-surface")).toBeVisible({ timeout: 10000 });
 
   await page.keyboard.press("Escape");
   await expect(page.getByText(/Type real code/i)).toBeVisible({
@@ -32,8 +30,7 @@ test("typing screen: ⌘+Enter (or Ctrl+Enter) restarts the current item", async
   await page.goto("/");
   await page.getByTestId("landing-type-right-away").click();
   await page.getByTestId("curated-start-fastapi").click();
-  await expect(page.getByTestId("focus-start")).toBeVisible({ timeout: 10000 });
-  await page.getByTestId("focus-start").click();
+  await expect(page.getByTestId("typing-surface")).toBeVisible({ timeout: 10000 });
   const surface = page.getByTestId("typing-surface");
   await surface.locator("textarea").focus();
   await page.keyboard.press("c");
@@ -113,7 +110,7 @@ test("typing surface: wrong character renders as error, backspace clears", async
     }),
   );
   await page.getByTestId("paste-start").click();
-  await page.getByTestId("focus-start").click();
+  await expect(page.getByTestId("typing-surface")).toBeVisible({ timeout: 10000 });
   const surface = page.getByTestId("typing-surface");
   await surface.locator("textarea").focus();
 

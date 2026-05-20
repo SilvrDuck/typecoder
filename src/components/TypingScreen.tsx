@@ -3,7 +3,6 @@ import { useAppStore } from "@/state/useAppStore";
 import { TypingSurface } from "./TypingSurface";
 import { TypingStats } from "./TypingStats";
 import { CompletionCard } from "./CompletionCard";
-import { FocusCard } from "./FocusCard";
 import { Button } from "./Button";
 import { Kbd, Panel } from "./Panel";
 
@@ -15,17 +14,13 @@ export function TypingScreen() {
   const restartCurrentItem = useAppStore((s) => s.restartCurrentItem);
   const navigate = useAppStore((s) => s.navigate);
 
-  const [showFocusCard, setShowFocusCard] = useState(true);
   const [showCompletion, setShowCompletion] = useState(false);
-  const [skipIntros, setSkipIntros] = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
 
   useEffect(() => {
     setShowCompletion(false);
     setShowSkipConfirm(false);
-    if (skipIntros) setShowFocusCard(false);
-    else setShowFocusCard(true);
-  }, [session?.cursor, skipIntros]);
+  }, [session?.cursor]);
 
   const handleNext = useCallback(() => {
     const s = useAppStore.getState().session;
@@ -128,18 +123,7 @@ export function TypingScreen() {
           />
         </div>
 
-        {showFocusCard && !skipIntros ? (
-          <div className="grid place-items-center min-h-[40vh]">
-            <FocusCard
-              item={item}
-              onStart={() => setShowFocusCard(false)}
-              onSkipIntros={() => {
-                setSkipIntros(true);
-                setShowFocusCard(false);
-              }}
-            />
-          </div>
-        ) : showCompletion ? (
+        {showCompletion ? (
           <div className="grid place-items-center min-h-[40vh]">
             <CompletionCard
               state={session.typingState}
