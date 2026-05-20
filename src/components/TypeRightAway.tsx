@@ -3,14 +3,14 @@ import { Panel, Pill } from "./Panel";
 import { Button } from "./Button";
 import { CURATED_REPOS, type CuratedRepo } from "@/core/config/curated";
 import { useAppStore } from "@/state/useAppStore";
+import { startCuratedSession } from "@/core/session/sessionStarter";
 
 export function TypeRightAway() {
   const pickCurated = useAppStore((s) => s.pickCurated);
-  const navigate = useAppStore((s) => s.navigate);
 
   function start(c: CuratedRepo) {
     pickCurated(c);
-    navigate({ name: "loading", title: c.config.title });
+    void startCuratedSession(c.config, `${c.repo}@${c.config.ref ?? "main"}`);
   }
 
   return (

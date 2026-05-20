@@ -2,6 +2,9 @@ import { Landing } from "@/components/Landing";
 import { TypeRightAway } from "@/components/TypeRightAway";
 import { CustomHub } from "@/components/CustomHub";
 import { ScreenStub } from "@/components/ScreenStub";
+import { TypingScreen } from "@/components/TypingScreen";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { ErrorScreen } from "@/components/ErrorScreen";
 import { useAppStore } from "@/state/useAppStore";
 
 export function App() {
@@ -23,12 +26,12 @@ export function App() {
     case "load-any-repo":
       return <ScreenStub title="Load any repo" trail={["custom", "repo"]} />;
     case "loading":
-      return <ScreenStub title={view.title} trail={["loading"]} />;
+      return <LoadingScreen title={view.title} />;
     case "typing":
-      return <ScreenStub title="Typing" trail={["typing"]} />;
+      return <TypingScreen />;
     case "summary":
       return <ScreenStub title="Session complete" trail={["summary"]} />;
     case "error":
-      return <ScreenStub title={view.title} trail={["error"]} />;
+      return <ErrorScreen title={view.title} detail={view.detail} />;
   }
 }
