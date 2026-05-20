@@ -1,7 +1,7 @@
 import { Landing } from "@/components/Landing";
 import { TypeRightAway } from "@/components/TypeRightAway";
 import { CustomHub } from "@/components/CustomHub";
-import { ScreenStub } from "@/components/ScreenStub";
+import { SessionSummary } from "@/components/SessionSummary";
 import { TypingScreen } from "@/components/TypingScreen";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { ErrorScreen } from "@/components/ErrorScreen";
@@ -31,7 +31,7 @@ export function App() {
     case "typing":
       return <TypingScreen />;
     case "summary":
-      return <ScreenStub title="Session complete" trail={["summary"]} />;
+      return <SessionSummary />;
     case "error":
       return <ErrorScreen title={view.title} detail={view.detail} />;
   }

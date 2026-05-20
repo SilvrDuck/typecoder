@@ -256,10 +256,14 @@ export function createGithubClient(opts: GithubClientOptions = {}) {
 function mapHttp(res: Response): GithubError | null {
   if (res.ok) return null;
   const status = res.status;
-  if (status === 403) {
+  if (status === 403 || status === 429) {
     const remaining = res.headers.get("x-ratelimit-remaining");
     const reset = res.headers.get("x-ratelimit-reset");
-    if (remaining === "0") {
+    // Treat as rate limit when:
+    //   - 429 (Too Many Requests), regardless of headers
+    //   - 403 with x-ratelimit-remaining: 0 (the documented GitHub signal)
+    //   - 403 with an x-ratelimit-reset header (some CDN paths only send reset)
+    if (status === 429 || remaining === "0" || reset !== null) {
       const resetNum = reset !== null ? Number(reset) : NaN;
       const retryAfter =
         Number.isFinite(resetNum)
