@@ -27,12 +27,29 @@ export type TypingState = {
   mistakes: TypingMistake[];
   correctedMistakes: number;
   /**
-   * Characters auto-injected by smart Enter / smart Tab — they consume
-   * target whitespace runs without the user pressing one key per char.
+   * Characters auto-injected by smart Enter / smart Tab / smart Space.
    * Subtracted from the WPM/accuracy denominator so a single Tab that
    * eats 4 spaces does not show up as 4 keystrokes worth of credit.
+   *
+   * Invariant: `freeChars === freeIndices.size`. Both are kept around for
+   * convenience (freeChars in metrics math, freeIndices for the
+   * "is this position auto-filled" lookup during backspace).
    */
   freeChars: number;
+  /**
+   * The exact `input` indices that were auto-filled (smart Enter / Tab
+   * indent and smart Space "missed" fillers). Drives backspace's free
+   * decrement and lets metrics exclude these positions from accuracy
+   * (they weren't really typed, so they neither help nor hurt).
+   */
+  freeIndices: Set<number>;
+  /**
+   * Indices the user skipped over by hitting SPACE mid-word (Monkeytype
+   * "smart space"). Subset of `freeIndices`. Tracked separately so the
+   * UI can render them as "missed" (distinct red) and metrics can
+   * penalize accuracy for the misses.
+   */
+  missedIndices: Set<number>;
 };
 
 export type KeyMeta = {
@@ -51,6 +68,8 @@ export function startTyping(target: string): TypingState {
     mistakes: [],
     correctedMistakes: 0,
     freeChars: 0,
+    freeIndices: new Set<number>(),
+    missedIndices: new Set<number>(),
   };
 }
 
@@ -70,13 +89,15 @@ export function isComplete(state: TypingState): boolean {
  * `max(target.length, input.length)` so the UI can render "extra" cells
  * past the end of the target.
  */
-export type CharStatus = "pending" | "correct" | "wrong" | "extra";
+export type CharStatus = "pending" | "correct" | "wrong" | "extra" | "missed";
 
 export function charStatuses(state: TypingState): CharStatus[] {
   const out: CharStatus[] = [];
   const n = Math.max(state.target.length, state.input.length);
   for (let i = 0; i < n; i++) {
-    if (i >= state.target.length) {
+    if (state.missedIndices.has(i)) {
+      out.push("missed");
+    } else if (i >= state.target.length) {
       out.push(i < state.input.length ? "extra" : "pending");
     } else if (i >= state.input.length) {
       out.push("pending");
@@ -133,16 +154,25 @@ export function applyKey(
     const corrections = s.mistakes.filter(
       (m) => m.index >= removeTo && m.index < s.cursor,
     ).length;
-    // freeChars in the removed range need to be decremented from the
-    // running count so the denominator stays honest if the user retypes.
-    const removedFreeChars = countFreeCharsInRange(s, removeTo, s.cursor);
+    // Drop free/missed flags inside the removed range. freeIndices is the
+    // source of truth — count exactly the positions removed so freeChars
+    // stays perfectly in sync (no heuristic, no over/under-count).
+    const nextFree = new Set(s.freeIndices);
+    const nextMissed = new Set(s.missedIndices);
+    let removedFreeChars = 0;
+    for (let i = removeTo; i < s.cursor; i++) {
+      if (nextFree.delete(i)) removedFreeChars++;
+      nextMissed.delete(i);
+    }
     return {
       ...s,
       input: s.input.slice(0, removeTo),
       cursor: removeTo,
       correctedMistakes: s.correctedMistakes + corrections,
       mistakes: s.mistakes.filter((m) => m.index < removeTo),
-      freeChars: Math.max(0, s.freeChars - removedFreeChars),
+      freeChars: s.freeChars - removedFreeChars,
+      freeIndices: nextFree,
+      missedIndices: nextMissed,
     };
   }
 
@@ -152,6 +182,10 @@ export function applyKey(
 
   if (key === "Tab") {
     return consumeIndent(s, now);
+  }
+
+  if (key === " ") {
+    return handleSpace(s, now);
   }
 
   if (key.length === 1) {
@@ -206,12 +240,14 @@ function insertChar(
       i++;
     }
     if (i > next.cursor) {
-      const free = i - next.cursor;
+      const nextFree = new Set(next.freeIndices);
+      for (let j = next.cursor; j < i; j++) nextFree.add(j);
       next = {
         ...next,
         input: next.input + next.target.slice(next.cursor, i),
         cursor: i,
-        freeChars: next.freeChars + free,
+        freeChars: next.freeChars + (i - next.cursor),
+        freeIndices: nextFree,
       };
     }
   }
@@ -224,6 +260,92 @@ function insertChar(
     next = { ...next, completedAt: now };
   }
 
+  return next;
+}
+
+/**
+ * SPACE keystroke — Monkeytype "smart space" behavior.
+ *
+ *  - If the target wants a space here, just insert it normally.
+ *  - If the target wants a newline or tab, insert the space as a literal
+ *    wrong char (the user clearly meant to hit a whitespace key but the
+ *    wrong one; smart-skip would be aggressive here).
+ *  - Otherwise — target is mid-token — skip the cursor forward to the
+ *    next whitespace boundary (space, tab, or newline), marking every
+ *    intermediate position as "missed". If the boundary is a literal
+ *    space, consume it too (so the user lands on the next word). Tab and
+ *    newline boundaries are NOT consumed; the user still needs to press
+ *    Tab/Enter to take them.
+ */
+function handleSpace(state: TypingState, now: number): TypingState {
+  const expected = state.target[state.cursor];
+
+  // Past end of target — fall through to "extra char" behavior.
+  if (expected === undefined) {
+    return insertChar(state, " ", now, { autoIndent: false });
+  }
+  // Target wants whitespace here — let insertChar handle it (correct for
+  // space, wrong-but-still-inserted for \n/\t).
+  if (expected === " " || expected === "\n" || expected === "\t") {
+    return insertChar(state, " ", now, { autoIndent: false });
+  }
+
+  // Smart-skip: walk forward to the next whitespace boundary in target.
+  let i = state.cursor;
+  while (
+    i < state.target.length &&
+    state.target[i] !== " " &&
+    state.target[i] !== "\n" &&
+    state.target[i] !== "\t"
+  ) {
+    i++;
+  }
+
+  const skipped = state.target.slice(state.cursor, i);
+  const skippedCount = i - state.cursor;
+  const nextMissed = new Set(state.missedIndices);
+  const nextFree = new Set(state.freeIndices);
+  const nextMistakes = state.mistakes.slice();
+  for (let j = state.cursor; j < i; j++) {
+    nextMissed.add(j);
+    nextFree.add(j); // missed positions are auto-filled → "free"
+    nextMistakes.push({
+      index: j,
+      expected: state.target[j],
+      actual: "",
+      timestamp: now,
+    });
+  }
+  let nextInput = state.input + skipped;
+  let nextCursor = i;
+  // Consume the boundary only if it's a literal space — a real user
+  // keystroke (NOT added to freeIndices).
+  if (i < state.target.length && state.target[i] === " ") {
+    nextInput += " ";
+    nextCursor = i + 1;
+  }
+
+  let next: TypingState = {
+    ...state,
+    input: nextInput,
+    cursor: nextCursor,
+    startedAt: state.startedAt ?? now,
+    mistakes: nextMistakes,
+    missedIndices: nextMissed,
+    freeIndices: nextFree,
+    // Missed chars are auto-filled. They don't inflate WPM (excluded
+    // via freeChars) but DO penalize accuracy (added to denominator in
+    // metrics.ts via missedIndices.size).
+    freeChars: state.freeChars + skippedCount,
+  };
+
+  if (
+    next.cursor === next.target.length &&
+    next.input === next.target &&
+    next.completedAt === undefined
+  ) {
+    next = { ...next, completedAt: now };
+  }
   return next;
 }
 
@@ -241,12 +363,15 @@ function consumeIndent(state: TypingState, now: number): TypingState {
   if (i === state.cursor) return state; // no whitespace to consume
   const slice = state.target.slice(state.cursor, i);
   const free = i - state.cursor;
+  const nextFree = new Set(state.freeIndices);
+  for (let j = state.cursor; j < i; j++) nextFree.add(j);
   let next: TypingState = {
     ...state,
     input: state.input + slice,
     cursor: i,
     startedAt: state.startedAt ?? now,
     freeChars: state.freeChars + free,
+    freeIndices: nextFree,
   };
   if (
     next.cursor === next.target.length &&
@@ -256,26 +381,6 @@ function consumeIndent(state: TypingState, now: number): TypingState {
     next = { ...next, completedAt: now };
   }
   return next;
-}
-
-function countFreeCharsInRange(
-  state: TypingState,
-  from: number,
-  to: number,
-): number {
-  // freeChars are auto-injected runs of target whitespace. Approximate
-  // the count in [from, to) as: number of target whitespace positions
-  // in the range that actually matched (i.e. were auto-consumed rather
-  // than manually typed). We can't perfectly distinguish "user typed a
-  // space" from "Tab consumed a space" after the fact, so we conservatively
-  // count target whitespace in the range capped by `state.freeChars`.
-  if (state.freeChars === 0) return 0;
-  let ws = 0;
-  for (let i = from; i < to && i < state.target.length; i++) {
-    const t = state.target[i];
-    if ((t === " " || t === "\t" || t === "\n") && state.input[i] === t) ws++;
-  }
-  return Math.min(ws, state.freeChars);
 }
 
 function findWordStart(input: string, cursor: number): number {
