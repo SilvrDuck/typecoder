@@ -35,10 +35,11 @@ export function calculateMetrics(
   const minutes = elapsedMs / 60_000;
 
   // Total keystrokes the user has ever produced. Each entry in
-  // state.input is a kept keystroke; mistakes that were backspaced live
-  // in state.mistakes whose index >= state.cursor at the time but were
-  // already counted on insert. Sum kept + corrected.
-  const keptKeystrokes = state.input.length;
+  // state.input is a kept keystroke, MINUS the freeChars that smart Enter
+  // / smart Tab auto-consumed (those weren't real keystrokes — a single
+  // Tab can eat 4 spaces and should not count as 4 keystrokes for WPM).
+  // Mistakes that were backspaced are tracked in state.correctedMistakes.
+  const keptKeystrokes = Math.max(0, state.input.length - state.freeChars);
   const totalKeystrokes = keptKeystrokes + state.correctedMistakes;
 
   let correctChars = 0;

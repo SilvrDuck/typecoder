@@ -19,12 +19,20 @@ export type TypingMistake = {
 
 export type TypingState = {
   target: string;
+  /** Characters typed so far. Invariant: `cursor === input.length`. */
   input: string;
   cursor: number;
   startedAt?: number;
   completedAt?: number;
   mistakes: TypingMistake[];
   correctedMistakes: number;
+  /**
+   * Characters auto-injected by smart Enter / smart Tab — they consume
+   * target whitespace runs without the user pressing one key per char.
+   * Subtracted from the WPM/accuracy denominator so a single Tab that
+   * eats 4 spaces does not show up as 4 keystrokes worth of credit.
+   */
+  freeChars: number;
 };
 
 export type KeyMeta = {
@@ -42,6 +50,7 @@ export function startTyping(target: string): TypingState {
     cursor: 0,
     mistakes: [],
     correctedMistakes: 0,
+    freeChars: 0,
   };
 }
 
@@ -57,7 +66,9 @@ export function isComplete(state: TypingState): boolean {
 }
 
 /**
- * Returns the per-position character status. Length === max(cursor, target.length).
+ * Returns the per-position character status. Length is
+ * `max(target.length, input.length)` so the UI can render "extra" cells
+ * past the end of the target.
  */
 export type CharStatus = "pending" | "correct" | "wrong" | "extra";
 
@@ -115,18 +126,23 @@ export function applyKey(
     let removeTo = s.cursor - 1;
     if (word) removeTo = findWordStart(s.input, s.cursor);
     else if (token) removeTo = findTokenStart(s.input, s.cursor);
-    const removed = s.input.slice(removeTo, s.cursor);
-    const corrections = countCorrections(s, removeTo, s.cursor);
-    const newInput = s.input.slice(0, removeTo);
+    // Count corrections as exactly the mistakes that lived in the removed
+    // range — not every position that didn't match the target. Otherwise
+    // over-backspacing through *correct* characters falsely inflates
+    // correctedMistakes and depresses accuracy.
+    const corrections = s.mistakes.filter(
+      (m) => m.index >= removeTo && m.index < s.cursor,
+    ).length;
+    // freeChars in the removed range need to be decremented from the
+    // running count so the denominator stays honest if the user retypes.
+    const removedFreeChars = countFreeCharsInRange(s, removeTo, s.cursor);
     return {
       ...s,
-      input: newInput,
+      input: s.input.slice(0, removeTo),
       cursor: removeTo,
       correctedMistakes: s.correctedMistakes + corrections,
-      // Drop mistakes whose index >= removeTo so they can be remade
       mistakes: s.mistakes.filter((m) => m.index < removeTo),
-      // unused but keep removed in case future hook wants it
-      ...(removed ? {} : {}),
+      freeChars: Math.max(0, s.freeChars - removedFreeChars),
     };
   }
 
@@ -190,10 +206,12 @@ function insertChar(
       i++;
     }
     if (i > next.cursor) {
+      const free = i - next.cursor;
       next = {
         ...next,
         input: next.input + next.target.slice(next.cursor, i),
         cursor: i,
+        freeChars: next.freeChars + free,
       };
     }
   }
@@ -222,11 +240,13 @@ function consumeIndent(state: TypingState, now: number): TypingState {
   }
   if (i === state.cursor) return state; // no whitespace to consume
   const slice = state.target.slice(state.cursor, i);
+  const free = i - state.cursor;
   let next: TypingState = {
     ...state,
     input: state.input + slice,
     cursor: i,
     startedAt: state.startedAt ?? now,
+    freeChars: state.freeChars + free,
   };
   if (
     next.cursor === next.target.length &&
@@ -238,13 +258,24 @@ function consumeIndent(state: TypingState, now: number): TypingState {
   return next;
 }
 
-function countCorrections(state: TypingState, from: number, to: number): number {
-  let n = 0;
-  for (let i = from; i < to; i++) {
-    if (i >= state.target.length) n++;
-    else if (state.input[i] !== state.target[i]) n++;
+function countFreeCharsInRange(
+  state: TypingState,
+  from: number,
+  to: number,
+): number {
+  // freeChars are auto-injected runs of target whitespace. Approximate
+  // the count in [from, to) as: number of target whitespace positions
+  // in the range that actually matched (i.e. were auto-consumed rather
+  // than manually typed). We can't perfectly distinguish "user typed a
+  // space" from "Tab consumed a space" after the fact, so we conservatively
+  // count target whitespace in the range capped by `state.freeChars`.
+  if (state.freeChars === 0) return 0;
+  let ws = 0;
+  for (let i = from; i < to && i < state.target.length; i++) {
+    const t = state.target[i];
+    if ((t === " " || t === "\t" || t === "\n") && state.input[i] === t) ws++;
   }
-  return n;
+  return Math.min(ws, state.freeChars);
 }
 
 function findWordStart(input: string, cursor: number): number {

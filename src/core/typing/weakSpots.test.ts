@@ -40,6 +40,31 @@ describe("summarizeWeakSpots", () => {
     expect(out.hardestChars[0].char).toBe("space");
   });
 
+  it("attributes extras past end-of-target to the last line, not a phantom line", () => {
+    // target ends without trailing newline at line 2
+    const target = "a\nbc";
+    let state = play(target, ["a", "Enter", "b", "c"]);
+    // simulate one extra char past end of target
+    state = play(target, ["a", "Enter", "b", "c", "x"]);
+    const out = summarizeWeakSpots([{ target, state, label: "snip" }]);
+    // The extra mistake must land on line 2, not line 3
+    expect(out.hardestLines.every((l) => l.line <= 2)).toBe(true);
+  });
+
+  it("preserves source paths that contain colons (windows-style)", () => {
+    const target = "ab";
+    const state = play(target, ["a", "x"]);
+    const out = summarizeWeakSpots([
+      {
+        target,
+        state,
+        label: "snip",
+        path: "C:/repos/foo/bar.ts",
+      },
+    ]);
+    expect(out.hardestLines[0].preview).toContain("C:/repos/foo/bar.ts");
+  });
+
   it("locates mistakes on the right line", () => {
     const target = "a\nbc";
     const r = {

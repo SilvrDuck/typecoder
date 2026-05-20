@@ -21,4 +21,10 @@ describe("normalizeCode", () => {
   it("preserves internal newlines and indentation", () => {
     expect(normalizeCode("if {\n  a\n}")).toBe("if {\n  a\n}");
   });
+
+  it("opt-out preserves trailing whitespace per line", () => {
+    expect(normalizeCode("a   \nb", { stripTrailingSpaces: false })).toBe(
+      "a   \nb",
+    );
+  });
 });

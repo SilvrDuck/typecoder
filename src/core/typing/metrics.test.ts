@@ -49,6 +49,57 @@ describe("metrics", () => {
     expect(m.rawWpm).toBe(25);
   });
 
+  it("does not inflate WPM when Tab consumes target indentation", () => {
+    // The user pressed Tab + x. Tab auto-consumed 4 spaces (freeChars).
+    // charsTyped reflects manually-produced characters, so the 4 indent
+    // chars do NOT count. Only the 'x' (and the Enter/Tab themselves, which
+    // produce zero "manual" characters) count toward charsTyped.
+    let s = startTyping("    x");
+    s = applyKey(s, "Tab", { now: 1000 });
+    s = applyKey(s, "x", { now: 2200 });
+    const m = calculateMetrics(s, 2200);
+    expect(s.freeChars).toBe(4);
+    expect(m.charsTyped).toBe(1); // only 'x' is a user-produced character
+  });
+
+  it("counts manually typed indentation toward WPM (no Tab shortcut)", () => {
+    // Same target as previous test, but the user types each space manually.
+    // freeChars should be 0 and charsTyped should reflect the full 5 chars.
+    let s = startTyping("    x");
+    let now = 1000;
+    for (const ch of "    x") {
+      s = applyKey(s, ch, { now: ++now });
+    }
+    const m = calculateMetrics(s, now);
+    expect(s.freeChars).toBe(0);
+    expect(m.charsTyped).toBe(5);
+  });
+
+  it("does not inflate WPM when Enter auto-skips indentation", () => {
+    let s = startTyping("a\n  b");
+    s = applyKey(s, "a", { now: 1000 });
+    s = applyKey(s, "Enter", { now: 2000 });
+    s = applyKey(s, "b", { now: 3000 });
+    const m = calculateMetrics(s, 3000);
+    // The Enter keystroke produces the "\n" (still a user-typed char,
+    // 1:1 with the keypress). Only the two auto-indent spaces are free.
+    expect(s.freeChars).toBe(2);
+    // Manual chars: 'a' + '\n' + 'b' = 3.
+    expect(m.charsTyped).toBe(3);
+  });
+
+  it("does not over-count corrections when user backspaces past a correct char", () => {
+    let s = startTyping("abc");
+    s = applyKey(s, "a", { now: 1000 });
+    s = applyKey(s, "b", { now: 1100 });
+    s = applyKey(s, "Backspace", { now: 1200 }); // over-deletes correct 'b'
+    s = applyKey(s, "b", { now: 1300 });
+    s = applyKey(s, "c", { now: 1400 });
+    const m = calculateMetrics(s, 1400);
+    // The backspace over a correct 'b' should NOT count as a correction.
+    expect(m.correctedMistakes).toBe(0);
+  });
+
   it("freezes elapsedMs at completion", () => {
     let s = startTyping("hi");
     s = applyKey(s, "h", { now: 1000 });

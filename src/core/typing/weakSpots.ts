@@ -27,17 +27,24 @@ export function summarizeWeakSpots(
   const topLines = opts.topLines ?? 5;
 
   const charCounts = new Map<string, number>();
-  const lineCounts = new Map<string, { line: number; preview: string; count: number; key: string }>();
+  // Use a separator that cannot appear in file paths so Windows-style
+  // drive letters ("C:\\foo") don't break the key parsing.
+  const SEP = "";
+  const lineCounts = new Map<
+    string,
+    { line: number; preview: string; count: number; source: string }
+  >();
 
   for (const r of results) {
     for (const m of r.state.mistakes) {
       const ch = mistakeChar(m);
       charCounts.set(ch, (charCounts.get(ch) ?? 0) + 1);
       const { line, preview } = locate(r.target, m.index);
-      const key = `${r.path ?? r.label ?? ""}:${line}`;
+      const source = r.path ?? r.label ?? "";
+      const key = `${source}${SEP}${line}`;
       const existing = lineCounts.get(key);
       if (existing) existing.count++;
-      else lineCounts.set(key, { line, preview, count: 1, key });
+      else lineCounts.set(key, { line, preview, count: 1, source });
     }
   }
 
@@ -49,10 +56,10 @@ export function summarizeWeakSpots(
   const hardestLines = [...lineCounts.values()]
     .sort((a, b) => b.count - a.count)
     .slice(0, topLines)
-    .map(({ line, count, preview, key }) => ({
+    .map(({ line, count, preview, source }) => ({
       line,
       count,
-      preview: `${key.split(":")[0]}:${line} ${preview}`.trim(),
+      preview: `${source}:${line} ${preview}`.trim(),
     }));
 
   return { hardestChars, hardestLines };
@@ -104,9 +111,12 @@ function mistakeChar(m: TypingMistake): string {
 }
 
 function locate(target: string, index: number): { line: number; preview: string } {
+  // For "extra" mistakes past the end of the target, attribute them to
+  // the last line so the UI doesn't draw a phantom line N+1.
+  const capped = Math.min(index, Math.max(0, target.length - 1));
   let line = 1;
   let lineStart = 0;
-  for (let i = 0; i < index && i < target.length; i++) {
+  for (let i = 0; i < capped; i++) {
     if (target[i] === "\n") {
       line++;
       lineStart = i + 1;
