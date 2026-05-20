@@ -6,6 +6,7 @@ import { CompletionCard } from "./CompletionCard";
 import { Button } from "./Button";
 import { Kbd, Panel } from "./Panel";
 import { buildGithubFileHref } from "@/core/github/githubFileUrl";
+import { buildShareUrlForCurrentSession } from "@/state/urlSync";
 
 export function TypingScreen() {
   const session = useAppStore((s) => s.session);
@@ -17,6 +18,22 @@ export function TypingScreen() {
 
   const [showCompletion, setShowCompletion] = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    try {
+      const url = buildShareUrlForCurrentSession();
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        window.prompt("Copy link:", url);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // No active session — button is disabled when this is true anyway.
+    }
+  }, []);
 
   useEffect(() => {
     setShowCompletion(false);
@@ -179,7 +196,17 @@ export function TypingScreen() {
               <Kbd>Esc</Kbd> menu
             </span>
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 items-center">
+            <Button
+              intent="ghost"
+              mono
+              onClick={handleShare}
+              className="text-xs"
+              data-testid="typing-share"
+              aria-label="Share session link"
+            >
+              {copied ? "Copied!" : "Share"}
+            </Button>
             <Button intent="ghost" mono onClick={handleRestart} className="text-xs">
               Restart
             </Button>

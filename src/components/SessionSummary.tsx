@@ -23,7 +23,7 @@ export function SessionSummary() {
     let accAvg = 0;
     let mistakes = 0;
     for (const r of results) {
-      const m = calculateMetrics(r.state, r.state.completedAt ?? Date.now());
+      const m = r.restoredMetrics ?? calculateMetrics(r.state, r.state.completedAt ?? Date.now());
       if (m.codeWpm > 0) {
         codeWpmSum += m.codeWpm;
         codeWpmCount++;
@@ -202,7 +202,7 @@ export function SessionSummary() {
         </div>
 
         <p className="font-mono text-2xs text-ink-500 mt-8 tracking-wider">
-          results live only in this tab — refresh wipes them <Pill>stateless</Pill>
+          state lives in the URL — copy the link to come back later <Pill>stateless</Pill>
         </p>
       </div>
     </main>
