@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAppStore } from "@/state/useAppStore";
 import { Button } from "./Button";
+import { Footer } from "./Footer";
 
 export function Landing() {
   const navigate = useAppStore((s) => s.navigate);
@@ -55,13 +56,14 @@ export function Landing() {
           </Button>
         </div>
 
-        <div className="mt-24 border-t border-ink-700 pt-6">
+        <div className="mt-24 border-t border-ink-700 pt-6 space-y-2">
           <p className="font-mono text-2xs text-ink-500 tracking-wider leading-relaxed">
             no backend · no auth · no telemetry · public repos only ·{" "}
             <span className="text-ink-400">
               all GitHub requests happen in your browser
             </span>
           </p>
+          <Footer />
         </div>
       </div>
     </main>
