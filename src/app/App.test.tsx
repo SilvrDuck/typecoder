@@ -31,21 +31,25 @@ describe("App", () => {
     expect(screen.getByTestId("curated-start-fastapi")).toBeInTheDocument();
   });
 
-  it("navigates to custom hub with all three cards", () => {
+  it("navigates to custom hub with all three flows on one page", () => {
     render(<App />);
     fireEvent.click(screen.getByTestId("landing-custom"));
     expect(screen.getByRole("heading", { name: /Custom session/i })).toBeInTheDocument();
-    expect(screen.getByTestId("custom-paste")).toBeInTheDocument();
-    expect(screen.getByTestId("custom-prompt")).toBeInTheDocument();
-    expect(screen.getByTestId("custom-load")).toBeInTheDocument();
+    // 1) Load-any-repo input is present
+    expect(screen.getByTestId("lar-input")).toBeInTheDocument();
+    // 2) Paste-config textarea is present
+    expect(screen.getByTestId("paste-textarea")).toBeInTheDocument();
+    // 3) Prompt-builder is collapsed by default; toggle reveals it
+    expect(screen.queryByTestId("custom-builder-body")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("custom-builder-toggle"));
+    expect(screen.getByTestId("custom-builder-body")).toBeInTheDocument();
   });
 
-  it("clicking the Mark from a sub-screen returns to landing", () => {
+  it("clicking the Mark on the custom hub returns to landing", () => {
     render(<App />);
     fireEvent.click(screen.getByTestId("landing-custom"));
-    fireEvent.click(screen.getByTestId("custom-paste"));
     expect(
-      screen.getByRole("heading", { name: /Paste config/i }),
+      screen.getByRole("heading", { name: /Custom session/i }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/Go to landing/i));
     expect(screen.getByText(/Type real code/i)).toBeInTheDocument();

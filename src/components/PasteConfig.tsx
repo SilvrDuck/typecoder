@@ -12,6 +12,25 @@ import {
 import { startCuratedSession } from "@/core/session/sessionStarter";
 
 export function PasteConfig() {
+  return (
+    <main className="min-h-screen px-6 py-12">
+      <div className="max-w-6xl mx-auto">
+        <Mark trail={["custom", "paste config"]} />
+        <h2 className="text-xl font-semibold tracking-tightish mb-1">
+          Paste config
+        </h2>
+        <p className="text-ink-300 text-sm mb-8 max-w-2xl">
+          Paste a CodeType JSON config. We'll validate it, show a preview,
+          then fetch the source files from GitHub in your browser when you
+          start the session.
+        </p>
+        <PasteConfigBody />
+      </div>
+    </main>
+  );
+}
+
+export function PasteConfigBody() {
   const text = useAppStore((s) => s.pastedConfigText);
   const setText = useAppStore((s) => s.setPastedConfigText);
 
@@ -36,19 +55,8 @@ export function PasteConfig() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-12">
-      <div className="max-w-6xl mx-auto">
-        <Mark trail={["custom", "paste config"]} />
-        <h2 className="text-xl font-semibold tracking-tightish mb-1">
-          Paste config
-        </h2>
-        <p className="text-ink-300 text-sm mb-8 max-w-2xl">
-          Paste a CodeType JSON config. We'll validate it, show a preview,
-          then fetch the source files from GitHub in your browser when you
-          start the session.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Panel className="p-0">
             <div className="px-5 py-3 border-b border-ink-700">
               <Label>config.json</Label>
@@ -156,7 +164,6 @@ export function PasteConfig() {
             )}
           </Panel>
         </div>
-      </div>
-    </main>
+    </>
   );
 }

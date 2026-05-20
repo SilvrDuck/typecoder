@@ -24,6 +24,24 @@ type LoadedState = {
 };
 
 export function LoadAnyRepo() {
+  return (
+    <main className="min-h-screen px-6 py-12">
+      <div className="max-w-3xl mx-auto">
+        <Mark trail={["custom", "load any repo"]} />
+        <h2 className="text-xl font-semibold tracking-tightish mb-1">
+          Load any repo
+        </h2>
+        <p className="text-ink-300 text-sm mb-8">
+          Paste a GitHub URL or owner/repo. Files are fetched from GitHub in
+          your browser only.
+        </p>
+        <LoadAnyRepoBody />
+      </div>
+    </main>
+  );
+}
+
+export function LoadAnyRepoBody() {
   const draft = useAppStore((s) => s.loadAnyRepo);
   const setDraft = useAppStore((s) => s.setLoadAnyRepo);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -96,17 +114,7 @@ export function LoadAnyRepo() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-12">
-      <div className="max-w-3xl mx-auto">
-        <Mark trail={["custom", "load any repo"]} />
-        <h2 className="text-xl font-semibold tracking-tightish mb-1">
-          Load any repo
-        </h2>
-        <p className="text-ink-300 text-sm mb-8">
-          Paste a GitHub URL or owner/repo. Files are fetched from GitHub in
-          your browser only.
-        </p>
-
+    <>
         <Panel className="mb-6">
           <Label>Repository</Label>
           <div className="flex gap-2">
@@ -229,8 +237,7 @@ export function LoadAnyRepo() {
             )}
           </Panel>
         )}
-      </div>
-    </main>
+    </>
   );
 }
 
