@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "repo": "torvalds/linux",
+  "ref": "master",
+  "title": "Linux kernel — boot, scheduling, memory, files",
+  "description": "Skim the kernel along its busiest paths: start_kernel boots, the scheduler picks a task, the page allocator hands out memory, the VFS opens a file.",
+  "items": [
+    {
+      "level": "function",
+      "path": "init/main.c",
+      "symbol": "start_kernel",
+      "label": "start_kernel — main boot entry"
+    },
+    {
+      "level": "function",
+      "path": "kernel/sched/core.c",
+      "symbol": "schedule",
+      "label": "schedule — main scheduler entry"
+    },
+    {
+      "level": "function",
+      "path": "mm/page_alloc.c",
+      "symbol": "free_pages",
+      "label": "free_pages — page allocator return path"
+    },
+    {
+      "level": "function",
+      "path": "fs/open.c",
+      "symbol": "do_sys_openat2",
+      "label": "do_sys_openat2 — open(2) backend"
+    },
+    {
+      "level": "function",
+      "path": "kernel/fork.c",
+      "symbol": "copy_process",
+      "label": "copy_process — fork backbone"
+    }
+  ]
+}

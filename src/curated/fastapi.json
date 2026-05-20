@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "repo": "fastapi/fastapi",
+  "ref": "master",
+  "title": "FastAPI — routing, validation, dependency injection",
+  "description": "Follow how FastAPI turns a request into a response: app construction, routing, dependency resolution, JSON encoding.",
+  "items": [
+    {
+      "level": "class",
+      "path": "fastapi/applications.py",
+      "symbol": "FastAPI",
+      "label": "FastAPI application class"
+    },
+    {
+      "level": "class",
+      "path": "fastapi/routing.py",
+      "symbol": "APIRouter",
+      "label": "APIRouter — route registration"
+    },
+    {
+      "level": "function",
+      "path": "fastapi/encoders.py",
+      "symbol": "jsonable_encoder",
+      "label": "Recursive JSON encoder"
+    },
+    {
+      "level": "function",
+      "path": "fastapi/dependencies/utils.py",
+      "symbol": "solve_dependencies",
+      "label": "Dependency resolution"
+    },
+    {
+      "level": "class",
+      "path": "fastapi/exceptions.py",
+      "symbol": "HTTPException",
+      "label": "HTTPException base class"
+    },
+    {
+      "level": "class",
+      "path": "fastapi/params.py",
+      "symbol": "Query",
+      "label": "Query parameter declaration"
+    }
+  ]
+}

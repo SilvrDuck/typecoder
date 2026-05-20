@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "repo": "microsoft/vscode",
+  "ref": "main",
+  "title": "VS Code — commands, services, workbench flow",
+  "description": "Trace how VS Code boots, registers commands, and dispatches them through its instantiation/services layer.",
+  "items": [
+    {
+      "level": "class",
+      "path": "src/vs/code/electron-main/main.ts",
+      "symbol": "CodeMain",
+      "label": "Electron main entry — CodeMain"
+    },
+    {
+      "level": "function",
+      "path": "src/vs/platform/instantiation/common/instantiation.ts",
+      "symbol": "createDecorator",
+      "label": "createDecorator — service ID factory"
+    },
+    {
+      "level": "function",
+      "path": "src/vs/platform/instantiation/common/instantiation.ts",
+      "symbol": "refineServiceDecorator",
+      "label": "refineServiceDecorator — type-narrowing decorator"
+    },
+    {
+      "level": "function",
+      "path": "src/vs/platform/configuration/common/configuration.ts",
+      "symbol": "isConfigurationOverrides",
+      "label": "isConfigurationOverrides — type guard"
+    },
+    {
+      "level": "function",
+      "path": "src/vs/platform/configuration/common/configuration.ts",
+      "symbol": "ConfigurationTargetToString",
+      "label": "ConfigurationTargetToString — enum formatter"
+    }
+  ]
+}
