@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   applyKey,
   charStatuses,
@@ -6,6 +6,12 @@ import {
   type CharStatus,
   type TypingState,
 } from "@/core/typing/typingEngine";
+import {
+  buildTokenColorMap,
+  shikiLangFromPath,
+  type TokenColorMap,
+} from "@/core/typing/syntaxHighlight";
+import { useAppStore } from "@/state/useAppStore";
 
 type Props = {
   state: TypingState;
@@ -13,6 +19,8 @@ type Props = {
   onComplete: () => void;
   /** Disable the surface (e.g. show pause/menu over it). */
   disabled?: boolean;
+  /** Source path for the snippet — drives the Shiki language pick. */
+  path?: string;
 };
 
 /**
@@ -31,8 +39,29 @@ type Props = {
  * block when the cursor sits past the last cell (input.length ===
  * target.length but not yet complete).
  */
-export function TypingSurface({ state, onChange, onComplete, disabled }: Props) {
+export function TypingSurface({ state, onChange, onComplete, disabled, path }: Props) {
   const captureRef = useRef<HTMLTextAreaElement>(null);
+  const theme = useAppStore((s) => s.theme);
+  const [tokenColors, setTokenColors] = useState<TokenColorMap>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const lang = path ? shikiLangFromPath(path) : null;
+    if (!lang || !state.target) {
+      setTokenColors([]);
+      return;
+    }
+    buildTokenColorMap(state.target, lang, theme)
+      .then((colors) => {
+        if (!cancelled) setTokenColors(colors);
+      })
+      .catch(() => {
+        if (!cancelled) setTokenColors([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.target, path, theme]);
 
   useEffect(() => {
     if (!disabled) captureRef.current?.focus();
@@ -69,7 +98,7 @@ export function TypingSurface({ state, onChange, onComplete, disabled }: Props) 
     if (next !== state) onChange(next);
   }
 
-  const cells = renderChars(state.target, state.input, statuses, state.extras);
+  const cells = renderChars(state.target, state.input, statuses, state.extras, tokenColors);
   const trailingCaret =
     state.input.length === state.target.length &&
     state.input !== state.target;
@@ -115,6 +144,7 @@ function renderChars(
   input: string,
   statuses: CharStatus[],
   extras: Map<number, string>,
+  tokenColors: TokenColorMap,
 ): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   const n = Math.max(target.length, input.length);
@@ -133,6 +163,7 @@ function renderChars(
         typed={input[i]}
         status={statuses[i]}
         caret={i === input.length}
+        tokenColor={tokenColors[i] ?? ""}
       />,
     );
   }
@@ -155,18 +186,27 @@ function Char({
   typed,
   status,
   caret,
+  tokenColor,
 }: {
   index: number;
   expected: string | undefined;
   typed: string | undefined;
   status: CharStatus;
   caret: boolean;
+  tokenColor: string;
 }) {
+  // Wrong/extra/missed always use the error palette (no syntax color).
+  // Pending shows the syntax color dimmed; correct shows it full.
+  const useSyntax = tokenColor && (status === "pending" || status === "correct");
+  const style: React.CSSProperties | undefined = useSyntax
+    ? { color: tokenColor, opacity: status === "pending" ? 0.45 : 1 }
+    : undefined;
   return (
     <span
       data-index={index}
       data-status={status}
-      className={`relative ${colorClass(status)}`}
+      className={`relative ${useSyntax ? "" : colorClass(status)}`}
+      style={style}
     >
       {caret && <Caret />}
       {renderCell(expected, typed, status)}

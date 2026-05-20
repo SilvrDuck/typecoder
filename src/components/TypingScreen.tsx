@@ -181,6 +181,7 @@ export function TypingScreen() {
               state={session.typingState}
               onChange={setTypingState}
               onComplete={handleComplete}
+              path={item.path}
             />
           </div>
         )}
