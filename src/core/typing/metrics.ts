@@ -39,24 +39,31 @@ export function calculateMetrics(
   // / smart Tab auto-consumed (those weren't real keystrokes — a single
   // Tab can eat 4 spaces and should not count as 4 keystrokes for WPM).
   // Mistakes that were backspaced are tracked in state.correctedMistakes.
-  // Missed chars (smart-space skips) are already included in freeChars
-  // when handleSpace fires, so they don't bloat keystrokes. They also
-  // get excluded from correctChars below so accuracy reflects the miss.
+  // freeChars = smart-Enter indent + smart-Tab indent + smart-space
+  // missed fillers. They aren't real keystrokes — excluded from WPM
+  // denominators. correctChars also excludes them so a Tab that
+  // auto-fills 4 spaces doesn't count as 4 correct chars (which would
+  // push accuracy above 100% when paired with the reduced denominator).
   const keptKeystrokes = Math.max(0, state.input.length - state.freeChars);
-  const totalKeystrokes = keptKeystrokes + state.correctedMistakes;
+  const userKeystrokes = keptKeystrokes + state.correctedMistakes;
+  const missedCount = state.missedIndices.size;
 
   let correctChars = 0;
   for (let i = 0; i < state.input.length; i++) {
-    if (state.missedIndices.has(i)) continue;
+    if (state.freeIndices.has(i)) continue; // auto-filled, doesn't score either way
     if (i < state.target.length && state.input[i] === state.target[i]) {
       correctChars++;
     }
   }
 
-  const rawWpm = minutes > 0 ? Math.round(totalKeystrokes / 5 / minutes) : 0;
+  // Accuracy includes misses in the denominator so smart-skips hurt
+  // accuracy the same way wrong/uncorrected chars do — matches the
+  // Monkeytype model and matches user expectation ("you missed a word").
+  const accuracyDenominator = userKeystrokes + missedCount;
+  const rawWpm = minutes > 0 ? Math.round(userKeystrokes / 5 / minutes) : 0;
   const codeWpm = minutes > 0 ? Math.round(correctChars / 5 / minutes) : 0;
   const accuracy =
-    totalKeystrokes > 0 ? correctChars / totalKeystrokes : 1;
+    accuracyDenominator > 0 ? correctChars / accuracyDenominator : 1;
 
   const uncorrectedMistakes = state.mistakes.length;
   const progress =
@@ -70,7 +77,7 @@ export function calculateMetrics(
     correctedMistakes: state.correctedMistakes,
     uncorrectedMistakes,
     elapsedMs,
-    charsTyped: totalKeystrokes,
+    charsTyped: userKeystrokes,
     progress: Math.min(1, Math.max(0, progress)),
   };
 }

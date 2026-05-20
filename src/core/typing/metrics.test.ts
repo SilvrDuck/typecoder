@@ -100,6 +100,38 @@ describe("metrics", () => {
     expect(m.correctedMistakes).toBe(0);
   });
 
+  it("smart-space skip penalizes accuracy but not WPM", () => {
+    // target "foo bar"; user smart-skips "foo" with a single SPACE, then
+    // types "bar" correctly. 3 chars are missed, 1 space + 3 letters are
+    // real keystrokes. Accuracy denominator includes the missed chars so
+    // a skipped word costs accuracy.
+    let s = startTyping("foo bar");
+    s = applyKey(s, " ", { now: 1000 });
+    for (const ch of "bar") {
+      s = applyKey(s, ch, { now: 1000 });
+    }
+    const m = calculateMetrics(s, 2000);
+    expect(s.missedIndices.size).toBe(3);
+    expect(s.freeChars).toBe(3); // 3 missed positions are auto-filled
+    // 4 user keystrokes (space, b, a, r). charsTyped reflects WPM denom.
+    expect(m.charsTyped).toBe(4);
+    // 4 correct (space, b, a, r), 0 wrong, 3 missed. Accuracy = 4/(4+3).
+    expect(m.accuracy).toBeCloseTo(4 / 7, 5);
+  });
+
+  it("backspace over smart-skip restores freeChars exactly", () => {
+    // Reviewer-flagged regression: backspacing over the boundary space
+    // (real keystroke) must NOT decrement freeChars; only backspacing
+    // over missed-filler positions does.
+    let s = startTyping("foo bar");
+    s = applyKey(s, " ", { now: 1000 }); // smart-skip → freeChars=3
+    expect(s.freeChars).toBe(3);
+    s = applyKey(s, "Backspace", { now: 1100 }); // removes the boundary space
+    expect(s.freeChars).toBe(3); // unchanged — space was a real keystroke
+    s = applyKey(s, "Backspace", { now: 1200 }); // removes missed 'o'
+    expect(s.freeChars).toBe(2);
+  });
+
   it("freezes elapsedMs at completion", () => {
     let s = startTyping("hi");
     s = applyKey(s, "h", { now: 1000 });

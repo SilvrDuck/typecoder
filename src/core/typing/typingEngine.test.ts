@@ -277,12 +277,10 @@ describe("typingEngine — smart space", () => {
   it("backspace clears missed flags so retyping scores normally", () => {
     let s = startTyping("foo bar");
     s = applyKey(s, " ", { now: 1 }); // smart-skip foo + space, cursor=4
-    // Ctrl+Backspace removes the run of 'foo ' (whitespace + word, hitting
-    // start). With our findWordStart "single class" rule, ctrl+backspace
-    // from cursor 4 removes the space (whitespace run) first.
+    expect(s.freeChars).toBe(3); // 3 missed are free; boundary space is not
     s = applyKey(s, "Backspace", { now: 2 }); // remove the ' ' at index 3
     expect(s.cursor).toBe(3);
-    // Still missed at 0,1,2 — only the space at 3 was popped
+    expect(s.freeChars).toBe(3); // still 3 — boundary space wasn't free
     expect(s.missedIndices.has(0)).toBe(true);
     expect(s.missedIndices.has(3)).toBe(false);
     s = applyKey(s, "Backspace", { now: 3 });
@@ -290,6 +288,24 @@ describe("typingEngine — smart space", () => {
     s = applyKey(s, "Backspace", { now: 5 });
     expect(s.cursor).toBe(0);
     expect(s.missedIndices.size).toBe(0);
+    expect(s.freeChars).toBe(0);
     expect(s.input).toBe("");
+  });
+
+  it("handles two consecutive smart-skips on a multi-word line", () => {
+    let s = startTyping("foo bar baz");
+    s = applyKey(s, " ", { now: 1 }); // skip foo, cursor=4
+    expect(s.cursor).toBe(4);
+    expect(s.missedIndices.size).toBe(3);
+    s = applyKey(s, " ", { now: 2 }); // skip bar, cursor=8
+    expect(s.cursor).toBe(8);
+    expect(s.missedIndices.size).toBe(6);
+    // Both skipped ranges marked missed; both boundary spaces are real.
+    for (const idx of [0, 1, 2, 4, 5, 6]) {
+      expect(s.missedIndices.has(idx)).toBe(true);
+    }
+    expect(s.missedIndices.has(3)).toBe(false);
+    expect(s.missedIndices.has(7)).toBe(false);
+    expect(s.freeChars).toBe(6);
   });
 });
