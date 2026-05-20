@@ -27,13 +27,13 @@ test("Type right away shows three curated cards", async ({ page }) => {
   await expect(page.getByText("fastapi/fastapi")).toBeVisible();
 });
 
-test("Custom opens custom hub with three cards", async ({ page }) => {
+test("Custom opens consolidated hub with all flows on one page", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
   await expect(page.getByRole("heading", { name: /Custom session/i })).toBeVisible();
-  await expect(page.getByTestId("custom-paste")).toBeVisible();
-  await expect(page.getByTestId("custom-prompt")).toBeVisible();
-  await expect(page.getByTestId("custom-load")).toBeVisible();
+  await expect(page.getByTestId("lar-input")).toBeVisible();
+  await expect(page.getByTestId("paste-textarea")).toBeVisible();
+  await expect(page.getByTestId("custom-builder-toggle")).toBeVisible();
 });
 
 test("Enter key on landing triggers Type right away", async ({ page }) => {

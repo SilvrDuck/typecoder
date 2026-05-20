@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test("prompt builder is reactive when template changes", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-prompt").click();
+  await page.getByTestId("custom-builder-toggle").click();
 
   // Default template is trace-execution
   await expect(page.getByTestId("pb-best-for")).toContainText(
@@ -24,7 +24,7 @@ test("prompt builder reveals custom focus field for Custom template", async ({
 }) => {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-prompt").click();
+  await page.getByTestId("custom-builder-toggle").click();
 
   await expect(page.getByTestId("pb-custom-focus-row")).toHaveCount(0);
   await page.getByTestId("pb-template").selectOption("custom");
@@ -40,7 +40,7 @@ test("prompt builder copy prompt updates button label", async ({ page, context }
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-prompt").click();
+  await page.getByTestId("custom-builder-toggle").click();
   await page.getByTestId("pb-repo").fill("vitejs/vite");
   await page.getByTestId("pb-copy-prompt").click();
   await expect(page.getByTestId("pb-copy-prompt")).toContainText(/Copied/);
@@ -49,7 +49,6 @@ test("prompt builder copy prompt updates button label", async ({ page, context }
 test("paste config rejects malformed JSON", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-paste").click();
   await page.getByTestId("paste-textarea").fill("{ not json");
   await expect(page.getByTestId("paste-errors")).toBeVisible();
   await expect(page.getByTestId("paste-errors")).toContainText(/Invalid JSON|JSON/i);
@@ -58,7 +57,6 @@ test("paste config rejects malformed JSON", async ({ page }) => {
 test("paste config rejects invalid schema", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-paste").click();
   await page.getByTestId("paste-textarea").fill(
     JSON.stringify({ version: 2, repo: "a/b", title: "x", items: [] }),
   );
@@ -68,7 +66,6 @@ test("paste config rejects invalid schema", async ({ page }) => {
 test("paste config accepts a valid config and shows preview", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-paste").click();
   await page.getByTestId("paste-textarea").fill(
     JSON.stringify({
       version: 1,
@@ -85,7 +82,6 @@ test("paste config accepts a valid config and shows preview", async ({ page }) =
 test("load any repo rejects malformed repo input", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-load").click();
   await page.getByTestId("lar-input").fill("not-a-real-repo-input");
   await page.getByTestId("lar-load").click();
   await expect(page.getByTestId("lar-parse-error")).toBeVisible();
@@ -120,7 +116,6 @@ test("load any repo: mocked GitHub returns suggested session", async ({ page }) 
 
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-load").click();
   await page.getByTestId("lar-input").fill("vitejs/vite");
   await page.getByTestId("lar-load").click();
   await expect(page.getByTestId("lar-loaded")).toBeVisible({ timeout: 10000 });

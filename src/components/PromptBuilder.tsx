@@ -13,6 +13,24 @@ import {
 } from "@/core/config/promptTemplates";
 
 export function PromptBuilder() {
+  return (
+    <main className="min-h-screen px-6 py-12">
+      <div className="max-w-6xl mx-auto">
+        <Mark trail={["custom", "build config prompt"]} />
+        <h2 className="text-xl font-semibold tracking-tightish mb-1">
+          Build config prompt
+        </h2>
+        <p className="text-ink-300 text-sm mb-8 max-w-2xl">
+          Generate a prompt you can paste into Claude, ChatGPT, or any LLM.
+          CodeType itself never calls an LLM.
+        </p>
+        <PromptBuilderBody />
+      </div>
+    </main>
+  );
+}
+
+export function PromptBuilderBody() {
   const draft = useAppStore((s) => s.promptBuilder);
   const setDraft = useAppStore((s) => s.setPromptBuilder);
   const [copied, setCopied] = useState<"" | "prompt" | "schema">("");
@@ -56,17 +74,7 @@ export function PromptBuilder() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-12">
-      <div className="max-w-6xl mx-auto">
-        <Mark trail={["custom", "build config prompt"]} />
-        <h2 className="text-xl font-semibold tracking-tightish mb-1">
-          Build config prompt
-        </h2>
-        <p className="text-ink-300 text-sm mb-8 max-w-2xl">
-          Generate a prompt you can paste into Claude, ChatGPT, or any LLM.
-          CodeType itself never calls an LLM.
-        </p>
-
+    <>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-6">
           {/* Controls */}
           <Panel>
@@ -183,7 +191,6 @@ export function PromptBuilder() {
             </pre>
           </Panel>
         </div>
-      </div>
-    </main>
+    </>
   );
 }

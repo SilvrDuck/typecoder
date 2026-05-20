@@ -75,24 +75,23 @@ test("mobile layout: landing still shows both paths", async ({ browser }) => {
   await context.close();
 });
 
-test("tablet layout: custom hub renders three cards", async ({ browser }) => {
+test("tablet layout: custom hub renders consolidated flows", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 820, height: 1180 },
   });
   const page = await context.newPage();
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await expect(page.getByTestId("custom-paste")).toBeVisible();
-  await expect(page.getByTestId("custom-prompt")).toBeVisible();
-  await expect(page.getByTestId("custom-load")).toBeVisible();
+  await expect(page.getByTestId("lar-input")).toBeVisible();
+  await expect(page.getByTestId("paste-textarea")).toBeVisible();
+  await expect(page.getByTestId("custom-builder-toggle")).toBeVisible();
   await context.close();
 });
 
 test("typing surface: wrong character renders as error, backspace clears", async ({ page }) => {
-  // Use the demo repo through paste-config so no network is hit.
+  // Use the demo repo through the inline paste-config on the consolidated hub.
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-paste").click();
   await page.getByTestId("paste-textarea").fill(
     JSON.stringify({
       version: 1,

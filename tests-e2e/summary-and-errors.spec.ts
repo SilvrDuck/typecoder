@@ -8,7 +8,6 @@ import { test, expect } from "@playwright/test";
 test("session summary renders after completing items", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-paste").click();
 
   // Demo-repo file with no nested indentation so character replay is
   // simple. We pin a line range so the snippet is small and stable.

@@ -6,7 +6,6 @@ async function startDemoSession(
 ) {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-paste").click();
   await page.getByTestId("paste-textarea").fill(
     JSON.stringify({
       version: 1,
