@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-feature-settings: "ss01", "cv11";
+  background: #08090b;
+  color: #dcdfe5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle, deliberate selection style — not default browser blue */
+::selection {
+  background: rgba(245, 196, 81, 0.18);
+  color: #f0f2f5;
+}
+
+/* Keyboard kbd-like inline key chips */
+.kbd {
+  font-family: theme("fontFamily.mono");
+  font-size: 0.75rem;
+  padding: 0.075rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #14171c;
+  color: #b6bcc6;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* Reduced motion: kill caret blink and similar */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Hidden but keyboard-focusable input for typing capture */
+.typing-capture {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Glyph helpers for whitespace */
+.glyph-space::before {
+  content: "·";
+  color: rgba(255, 255, 255, 0.16);
+}
+.glyph-tab::before {
+  content: "→";
+  color: rgba(255, 255, 255, 0.16);
+  letter-spacing: 0.1em;
+}
+.glyph-newline::before {
+  content: "↵";
+  color: rgba(255, 255, 255, 0.16);
+  margin-right: 0.2em;
+}
+
+/* Focus ring — sharp, single-pixel, accent — never default blue */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px #0c0d10, 0 0 0 2px #f5c451;
+  border-radius: 4px;
+}
