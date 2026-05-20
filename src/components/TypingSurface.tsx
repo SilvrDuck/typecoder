@@ -21,6 +21,10 @@ type Props = {
   disabled?: boolean;
   /** Source path for the snippet — drives the Shiki language pick. */
   path?: string;
+  /** Lines from the source file BEFORE the typed snippet, dimmed. */
+  preContext?: string;
+  /** Lines from the source file AFTER the typed snippet, dimmed. */
+  postContext?: string;
 };
 
 /**
@@ -39,29 +43,51 @@ type Props = {
  * block when the cursor sits past the last cell (input.length ===
  * target.length but not yet complete).
  */
-export function TypingSurface({ state, onChange, onComplete, disabled, path }: Props) {
+export function TypingSurface({
+  state,
+  onChange,
+  onComplete,
+  disabled,
+  path,
+  preContext,
+  postContext,
+}: Props) {
   const captureRef = useRef<HTMLTextAreaElement>(null);
   const theme = useAppStore((s) => s.theme);
   const [tokenColors, setTokenColors] = useState<TokenColorMap>([]);
+  const [preTokens, setPreTokens] = useState<TokenColorMap>([]);
+  const [postTokens, setPostTokens] = useState<TokenColorMap>([]);
 
   useEffect(() => {
     let cancelled = false;
     const lang = path ? shikiLangFromPath(path) : null;
     if (!lang || !state.target) {
       setTokenColors([]);
+      setPreTokens([]);
+      setPostTokens([]);
       return;
     }
-    buildTokenColorMap(state.target, lang, theme)
-      .then((colors) => {
-        if (!cancelled) setTokenColors(colors);
+    Promise.all([
+      buildTokenColorMap(state.target, lang, theme),
+      preContext ? buildTokenColorMap(preContext, lang, theme) : Promise.resolve([] as TokenColorMap),
+      postContext ? buildTokenColorMap(postContext, lang, theme) : Promise.resolve([] as TokenColorMap),
+    ])
+      .then(([main, pre, post]) => {
+        if (cancelled) return;
+        setTokenColors(main);
+        setPreTokens(pre);
+        setPostTokens(post);
       })
       .catch(() => {
-        if (!cancelled) setTokenColors([]);
+        if (cancelled) return;
+        setTokenColors([]);
+        setPreTokens([]);
+        setPostTokens([]);
       });
     return () => {
       cancelled = true;
     };
-  }, [state.target, path, theme]);
+  }, [state.target, path, theme, preContext, postContext]);
 
   useEffect(() => {
     if (!disabled) captureRef.current?.focus();
@@ -132,8 +158,22 @@ export function TypingSurface({ state, onChange, onComplete, disabled, path }: P
         aria-live="polite"
         aria-atomic="false"
       >
+        {preContext && (
+          <ContextBlock
+            text={preContext}
+            tokens={preTokens}
+            position="pre"
+          />
+        )}
         {cells}
         {trailingCaret && <TrailingCaret />}
+        {postContext && (
+          <ContextBlock
+            text={postContext}
+            tokens={postTokens}
+            position="post"
+          />
+        )}
       </pre>
     </div>
   );
@@ -302,6 +342,43 @@ function renderCell(
     );
   }
   return glyph ?? t;
+}
+
+/**
+ * Faded file context: lines before/after the snippet, syntax-colored
+ * but dimmed. Inline inside <pre> so newlines render naturally. A
+ * single `\n` separator between context and snippet keeps line numbers
+ * visually aligned with the source file.
+ */
+function ContextBlock({
+  text,
+  tokens,
+  position,
+}: {
+  text: string;
+  tokens: TokenColorMap;
+  position: "pre" | "post";
+}) {
+  const nodes: React.ReactNode[] = [];
+  for (let i = 0; i < text.length; i++) {
+    const color = tokens[i] ?? "";
+    nodes.push(
+      <span key={i} style={color ? { color } : undefined}>
+        {text[i]}
+      </span>,
+    );
+  }
+  return (
+    <span
+      data-testid={`typing-context-${position}`}
+      aria-hidden="true"
+      className="opacity-30 select-none"
+    >
+      {position === "post" && "\n"}
+      {nodes}
+      {position === "pre" && "\n"}
+    </span>
+  );
 }
 
 function whitespaceGlyph(ch: string): React.ReactNode | null {

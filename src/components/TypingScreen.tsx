@@ -182,6 +182,8 @@ export function TypingScreen() {
               onChange={setTypingState}
               onComplete={handleComplete}
               path={item.path}
+              preContext={item.preContext}
+              postContext={item.postContext}
             />
           </div>
         )}
