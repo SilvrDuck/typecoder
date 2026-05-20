@@ -1,4 +1,4 @@
-import type { TypingState } from "./typingEngine";
+import { countBoundaryExtras, type TypingState } from "./typingEngine";
 
 export type TypingMetrics = {
   rawWpm: number;
@@ -45,7 +45,12 @@ export function calculateMetrics(
   // auto-fills 4 spaces doesn't count as 4 correct chars (which would
   // push accuracy above 100% when paired with the reduced denominator).
   const keptKeystrokes = Math.max(0, state.input.length - state.freeChars);
-  const userKeystrokes = keptKeystrokes + state.correctedMistakes;
+  const boundaryExtraCount = countBoundaryExtras(state);
+  // Boundary extras are real keystrokes (each one is a wrong key the user
+  // pressed) so they count toward the WPM denominator and the accuracy
+  // denominator. They live outside input/cursor, so add them explicitly.
+  const userKeystrokes =
+    keptKeystrokes + state.correctedMistakes + boundaryExtraCount;
   const missedCount = state.missedIndices.size;
 
   let correctChars = 0;
@@ -65,7 +70,7 @@ export function calculateMetrics(
   const accuracy =
     accuracyDenominator > 0 ? correctChars / accuracyDenominator : 1;
 
-  const uncorrectedMistakes = state.mistakes.length;
+  const uncorrectedMistakes = state.mistakes.length + boundaryExtraCount;
   const progress =
     state.target.length === 0 ? 1 : correctChars / state.target.length;
 
@@ -73,7 +78,7 @@ export function calculateMetrics(
     rawWpm,
     codeWpm,
     accuracy,
-    mistakes: state.mistakes.length + state.correctedMistakes,
+    mistakes: uncorrectedMistakes + state.correctedMistakes,
     correctedMistakes: state.correctedMistakes,
     uncorrectedMistakes,
     elapsedMs,

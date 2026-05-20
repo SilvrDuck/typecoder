@@ -133,6 +133,30 @@ describe("metrics", () => {
     expect(s.freeChars).toBe(1);
   });
 
+  it("counts boundary extras as keystrokes and uncorrected mistakes", () => {
+    // target 'a b': type 'a' (correct), then 5 wrong chars at boundary.
+    let s = startTyping("a b");
+    s = applyKey(s, "a", { now: 1000 });
+    for (const ch of "xxxxx") s = applyKey(s, ch, { now: 1100 });
+    const m = calculateMetrics(s, 1200);
+    // 6 user keystrokes: 'a' + 5 extras
+    expect(m.charsTyped).toBe(6);
+    // 1 correct ('a'), 5 wrong-extras: accuracy = 1/6
+    expect(m.accuracy).toBeCloseTo(1 / 6, 5);
+    // The 5 extras are uncorrected mistakes.
+    expect(m.uncorrectedMistakes).toBe(5);
+  });
+
+  it("backspacing a boundary extra counts as a corrected mistake", () => {
+    let s = startTyping("a b");
+    s = applyKey(s, "a", { now: 1000 });
+    s = applyKey(s, "x", { now: 1100 }); // boundary extra
+    s = applyKey(s, "Backspace", { now: 1200 }); // pop it
+    const m = calculateMetrics(s, 1300);
+    expect(m.correctedMistakes).toBe(1);
+    expect(m.uncorrectedMistakes).toBe(0);
+  });
+
   it("freezes elapsedMs at completion", () => {
     let s = startTyping("hi");
     s = applyKey(s, "h", { now: 1000 });

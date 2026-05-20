@@ -69,7 +69,7 @@ export function TypingSurface({ state, onChange, onComplete, disabled }: Props) 
     if (next !== state) onChange(next);
   }
 
-  const cells = renderChars(state.target, state.input, statuses);
+  const cells = renderChars(state.target, state.input, statuses, state.extras);
   const trailingCaret =
     state.input.length === state.target.length &&
     state.input !== state.target;
@@ -114,10 +114,17 @@ function renderChars(
   target: string,
   input: string,
   statuses: CharStatus[],
+  extras: Map<number, string>,
 ): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   const n = Math.max(target.length, input.length);
   for (let i = 0; i < n; i++) {
+    const extra = extras.get(i);
+    if (extra) {
+      for (let k = 0; k < extra.length; k++) {
+        nodes.push(<ExtraGlyph key={`x-${i}-${k}`} ch={extra[k]} />);
+      }
+    }
     nodes.push(
       <Char
         key={i}
@@ -130,6 +137,16 @@ function renderChars(
     );
   }
   return nodes;
+}
+
+/** A red typed-char glyph rendered inline at a whitespace boundary. */
+function ExtraGlyph({ ch }: { ch: string }) {
+  const glyph = whitespaceGlyph(ch);
+  return (
+    <span data-status="extra" className={colorClass("extra")}>
+      {glyph ?? ch}
+    </span>
+  );
 }
 
 function Char({

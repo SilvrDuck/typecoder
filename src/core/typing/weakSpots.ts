@@ -36,7 +36,7 @@ export function summarizeWeakSpots(
   >();
 
   for (const r of results) {
-    for (const m of r.state.mistakes) {
+    for (const m of allMistakes(r.state, r.target)) {
       const ch = mistakeChar(m);
       charCounts.set(ch, (charCounts.get(ch) ?? 0) + 1);
       const { line, preview } = locate(r.target, m.index);
@@ -82,7 +82,7 @@ export function buildWeakSpotPracticeQueue(
   >();
   for (const r of results) {
     const lines = r.target.split("\n");
-    for (const m of r.state.mistakes) {
+    for (const m of allMistakes(r.state, r.target)) {
       const { line } = locate(r.target, m.index);
       const idx = line - 1;
       const text = lines[idx] ?? "";
@@ -100,6 +100,27 @@ export function buildWeakSpotPracticeQueue(
       label: `${entry.path ?? "snippet"}:${entry.line}`,
       text: entry.text,
     }));
+}
+
+/**
+ * Iterate over every mistake the user produced for a snippet — both
+ * "wrong" mistakes stored on state.mistakes AND boundary extras (typed
+ * chars at whitespace boundaries that didn't consume the whitespace).
+ * Boundary extras are surfaced as synthetic mistakes whose `expected`
+ * is the boundary's structural whitespace char so they bucket correctly
+ * under "space"/"tab"/"newline".
+ */
+function* allMistakes(
+  state: TypingState,
+  target: string,
+): Generator<TypingMistake> {
+  for (const m of state.mistakes) yield m;
+  for (const [index, chars] of state.extras) {
+    const expected = target[index] ?? "";
+    for (const ch of chars) {
+      yield { index, expected, actual: ch, timestamp: 0 };
+    }
+  }
 }
 
 function mistakeChar(m: TypingMistake): string {
