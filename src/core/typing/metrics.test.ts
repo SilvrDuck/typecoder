@@ -101,35 +101,36 @@ describe("metrics", () => {
   });
 
   it("smart-space skip penalizes accuracy but not WPM", () => {
-    // target "foo bar"; user smart-skips "foo" with a single SPACE, then
-    // types "bar" correctly. 3 chars are missed, 1 space + 3 letters are
-    // real keystrokes. Accuracy denominator includes the missed chars so
-    // a skipped word costs accuracy.
+    // target "foo bar"; user types 'f' then smart-skips "oo" with SPACE,
+    // then types "bar" correctly. 2 chars are missed, 5 are real
+    // keystrokes (f, space, b, a, r). Accuracy denominator includes the
+    // missed chars so a skipped word costs accuracy.
     let s = startTyping("foo bar");
+    s = applyKey(s, "f", { now: 1000 });
     s = applyKey(s, " ", { now: 1000 });
     for (const ch of "bar") {
       s = applyKey(s, ch, { now: 1000 });
     }
     const m = calculateMetrics(s, 2000);
-    expect(s.missedIndices.size).toBe(3);
-    expect(s.freeChars).toBe(3); // 3 missed positions are auto-filled
-    // 4 user keystrokes (space, b, a, r). charsTyped reflects WPM denom.
-    expect(m.charsTyped).toBe(4);
-    // 4 correct (space, b, a, r), 0 wrong, 3 missed. Accuracy = 4/(4+3).
-    expect(m.accuracy).toBeCloseTo(4 / 7, 5);
+    expect(s.missedIndices.size).toBe(2);
+    expect(s.freeChars).toBe(2);
+    // 5 user keystrokes: f, space, b, a, r
+    expect(m.charsTyped).toBe(5);
+    // 5 correct, 0 wrong, 2 missed. Accuracy = 5/(5+2).
+    expect(m.accuracy).toBeCloseTo(5 / 7, 5);
   });
 
   it("backspace over smart-skip restores freeChars exactly", () => {
-    // Reviewer-flagged regression: backspacing over the boundary space
-    // (real keystroke) must NOT decrement freeChars; only backspacing
-    // over missed-filler positions does.
+    // Backspacing over the boundary space (real keystroke) must NOT
+    // decrement freeChars; only backspacing over missed-filler positions does.
     let s = startTyping("foo bar");
-    s = applyKey(s, " ", { now: 1000 }); // smart-skip → freeChars=3
-    expect(s.freeChars).toBe(3);
-    s = applyKey(s, "Backspace", { now: 1100 }); // removes the boundary space
-    expect(s.freeChars).toBe(3); // unchanged — space was a real keystroke
-    s = applyKey(s, "Backspace", { now: 1200 }); // removes missed 'o'
+    s = applyKey(s, "f", { now: 1000 }); // enter "foo"
+    s = applyKey(s, " ", { now: 1000 }); // smart-skip → freeChars=2
     expect(s.freeChars).toBe(2);
+    s = applyKey(s, "Backspace", { now: 1100 }); // removes the boundary space
+    expect(s.freeChars).toBe(2); // unchanged — space was a real keystroke
+    s = applyKey(s, "Backspace", { now: 1200 }); // removes missed 'o' at idx 2
+    expect(s.freeChars).toBe(1);
   });
 
   it("freezes elapsedMs at completion", () => {

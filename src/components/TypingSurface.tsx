@@ -98,7 +98,7 @@ export function TypingSurface({ state, onChange, onComplete, disabled }: Props) 
         readOnly={false}
       />
       <pre
-        className="whitespace-pre-wrap break-words m-0 p-0"
+        className="whitespace-pre m-0 p-0 overflow-x-auto"
         style={{ tabSize: 2 }}
         aria-live="polite"
         aria-atomic="false"

@@ -219,14 +219,52 @@ describe("charStatuses", () => {
 
   it("marks smart-space skipped positions as 'missed'", () => {
     let s = startTyping("ab cd");
-    s = applyKey(s, " "); // smart-skip from cursor 0: skip "ab", consume " "
+    s = applyKey(s, "a"); // type 'a' to enter the word
+    s = applyKey(s, " "); // smart-skip remainder of "ab", consume " "
     expect(charStatuses(s)).toEqual([
-      "missed",
+      "correct",
       "missed",
       "correct",
       "pending",
       "pending",
     ]);
+  });
+
+  it("does not skip when space pressed at start of an untouched word", () => {
+    let s = startTyping("foo bar");
+    s = applyKey(s, " "); // Monkeytype rule 1.1 — no-op at empty word
+    expect(s.cursor).toBe(0);
+    expect(s.input).toBe("");
+    expect(s.mistakes.length).toBe(0);
+  });
+
+  it("suppresses space when target wants a newline", () => {
+    let s = startTyping("foo\nbar");
+    for (const ch of "foo") s = applyKey(s, ch);
+    expect(s.cursor).toBe(3);
+    s = applyKey(s, " "); // target[3] === '\n' → space is dropped
+    expect(s.cursor).toBe(3);
+    expect(s.input).toBe("foo");
+    expect(s.mistakes.length).toBe(0);
+  });
+
+  it("suppresses space when target wants a tab", () => {
+    let s = startTyping("a\tb");
+    s = applyKey(s, "a");
+    s = applyKey(s, " "); // target[1] === '\t' → space is dropped
+    expect(s.cursor).toBe(1);
+    expect(s.input).toBe("a");
+    expect(s.mistakes.length).toBe(0);
+  });
+});
+
+describe("typingEngine — smart Tab/Enter", () => {
+  it("Tab is a no-op when target at cursor is a newline", () => {
+    let s = startTyping("\nfoo");
+    s = applyKey(s, "Tab"); // target[0] === '\n' → no consume
+    expect(s.cursor).toBe(0);
+    expect(s.input).toBe("");
+    expect(s.freeChars).toBe(0);
   });
 });
 
@@ -243,49 +281,51 @@ describe("typingEngine — smart space", () => {
 
   it("skips to next space when target is mid-token", () => {
     let s = startTyping("foo bar");
-    s = applyKey(s, " ", { now: 1 });
-    // smart-skip: positions 0,1,2 ('f','o','o') marked missed; space at 3
-    // consumed; cursor lands on 'b' at index 4
+    s = applyKey(s, "f", { now: 1 }); // enter word "foo"
+    s = applyKey(s, " ", { now: 2 }); // smart-skip remainder of "foo"
+    // positions 1,2 ('o','o') marked missed; space at 3 consumed; cursor=4
     expect(s.cursor).toBe(4);
     expect(s.input).toBe("foo ");
-    expect(s.missedIndices.has(0)).toBe(true);
+    expect(s.missedIndices.has(0)).toBe(false); // 'f' was correctly typed
     expect(s.missedIndices.has(1)).toBe(true);
     expect(s.missedIndices.has(2)).toBe(true);
     expect(s.missedIndices.has(3)).toBe(false);
-    expect(s.mistakes.length).toBe(3);
-    expect(s.mistakes.every((m) => m.actual === "")).toBe(true);
-    expect(s.freeChars).toBe(3);
+    expect(s.mistakes.filter((m) => m.actual === "").length).toBe(2);
+    expect(s.freeChars).toBe(2);
   });
 
   it("stops at newline boundary without consuming it", () => {
     let s = startTyping("foo\nbar");
-    s = applyKey(s, " ", { now: 1 });
+    s = applyKey(s, "f", { now: 1 });
+    s = applyKey(s, " ", { now: 2 });
     expect(s.cursor).toBe(3); // stopped AT the newline
     expect(s.input).toBe("foo");
-    expect(s.missedIndices.size).toBe(3);
+    expect(s.missedIndices.size).toBe(2); // 'o','o' missed
   });
 
   it("skips to end of target when no boundary remains", () => {
     let s = startTyping("foo");
-    s = applyKey(s, " ", { now: 1 });
+    s = applyKey(s, "f", { now: 1 });
+    s = applyKey(s, " ", { now: 2 });
     expect(s.cursor).toBe(3);
     expect(s.input).toBe("foo");
     expect(isComplete(s)).toBe(true);
-    expect(s.missedIndices.size).toBe(3);
+    expect(s.missedIndices.size).toBe(2);
   });
 
   it("backspace clears missed flags so retyping scores normally", () => {
     let s = startTyping("foo bar");
-    s = applyKey(s, " ", { now: 1 }); // smart-skip foo + space, cursor=4
-    expect(s.freeChars).toBe(3); // 3 missed are free; boundary space is not
-    s = applyKey(s, "Backspace", { now: 2 }); // remove the ' ' at index 3
+    s = applyKey(s, "f", { now: 1 });
+    s = applyKey(s, " ", { now: 2 }); // smart-skip; missed at 1,2; cursor=4
+    expect(s.freeChars).toBe(2); // 2 missed are free; boundary space isn't
+    s = applyKey(s, "Backspace", { now: 3 }); // remove the ' ' at index 3
     expect(s.cursor).toBe(3);
-    expect(s.freeChars).toBe(3); // still 3 — boundary space wasn't free
-    expect(s.missedIndices.has(0)).toBe(true);
+    expect(s.freeChars).toBe(2); // still 2 — boundary space wasn't free
+    expect(s.missedIndices.has(1)).toBe(true);
     expect(s.missedIndices.has(3)).toBe(false);
-    s = applyKey(s, "Backspace", { now: 3 });
     s = applyKey(s, "Backspace", { now: 4 });
     s = applyKey(s, "Backspace", { now: 5 });
+    s = applyKey(s, "Backspace", { now: 6 });
     expect(s.cursor).toBe(0);
     expect(s.missedIndices.size).toBe(0);
     expect(s.freeChars).toBe(0);
@@ -294,18 +334,19 @@ describe("typingEngine — smart space", () => {
 
   it("handles two consecutive smart-skips on a multi-word line", () => {
     let s = startTyping("foo bar baz");
-    s = applyKey(s, " ", { now: 1 }); // skip foo, cursor=4
+    s = applyKey(s, "f", { now: 1 }); // enter "foo"
+    s = applyKey(s, " ", { now: 2 }); // skip "oo", consume space; cursor=4
     expect(s.cursor).toBe(4);
-    expect(s.missedIndices.size).toBe(3);
-    s = applyKey(s, " ", { now: 2 }); // skip bar, cursor=8
+    expect(s.missedIndices.size).toBe(2);
+    s = applyKey(s, "b", { now: 3 }); // enter "bar"
+    s = applyKey(s, " ", { now: 4 }); // skip "ar", consume space; cursor=8
     expect(s.cursor).toBe(8);
-    expect(s.missedIndices.size).toBe(6);
-    // Both skipped ranges marked missed; both boundary spaces are real.
-    for (const idx of [0, 1, 2, 4, 5, 6]) {
+    expect(s.missedIndices.size).toBe(4);
+    for (const idx of [1, 2, 5, 6]) {
       expect(s.missedIndices.has(idx)).toBe(true);
     }
-    expect(s.missedIndices.has(3)).toBe(false);
-    expect(s.missedIndices.has(7)).toBe(false);
-    expect(s.freeChars).toBe(6);
+    expect(s.missedIndices.has(0)).toBe(false); // 'f' typed correctly
+    expect(s.missedIndices.has(3)).toBe(false); // boundary space
+    expect(s.freeChars).toBe(4);
   });
 });
