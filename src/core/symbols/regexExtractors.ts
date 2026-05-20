@@ -32,6 +32,11 @@ type Pattern = {
   nameGroup: number;
 };
 
+// Reserved words that look like method names at this regex's level of
+// specificity. Used as a negative lookahead in the method-ish pattern.
+const TS_JS_KEYWORDS =
+  "if|else|while|for|switch|case|catch|try|return|typeof|instanceof|new|delete|throw|await|yield|in|of|do|break|continue|with";
+
 const TS_JS_PATTERNS: Pattern[] = [
   {
     level: "function",
@@ -46,7 +51,17 @@ const TS_JS_PATTERNS: Pattern[] = [
     nameGroup: 1,
   },
   { level: "class", regex: /^(?:export\s+)?class\s+([A-Za-z_$][\w$]*)/, nameGroup: 1 },
-  { level: "function", regex: /^\s*(?:async\s+)?([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{/, nameGroup: 1 }, // method-ish
+  // Method-ish: class methods like `foo(args) {` at any indent. The
+  // keyword lookahead prevents `if (x) {`, `while (...) {`, etc. from
+  // being matched as functions. Requires the brace on the same line so
+  // we don't accidentally match shorthand `foo()` calls.
+  {
+    level: "function",
+    regex: new RegExp(
+      `^\\s*(?!(?:${TS_JS_KEYWORDS})\\b)(?:async\\s+)?([A-Za-z_$][\\w$]*)\\s*\\([^)]*\\)\\s*\\{`,
+    ),
+    nameGroup: 1,
+  },
 ];
 
 const PY_PATTERNS: Pattern[] = [
@@ -103,11 +118,14 @@ const C_LIKE_PATTERNS: Pattern[] = [
   { level: "class", regex: /^\s*(?:class|struct)\s+([A-Za-z_][\w]*)/, nameGroup: 1 },
 ];
 
+// Java/Kotlin/C#: require an access modifier OR `fun`/`suspend` keyword.
+// Otherwise the pattern matches plain function-call sites like
+// `someThing(x)` and pollutes the symbols array.
 const JAVA_KOTLIN_PATTERNS: Pattern[] = [
   {
     level: "function",
     regex:
-      /^\s*(?:public|private|protected|static|final|abstract|fun|suspend)?\s*(?:[A-Za-z_][\w<>\[\],\s]*\s+)?([A-Za-z_][\w]*)\s*\([^)]*\)\s*\{?/,
+      /^\s*(?:(?:public|private|protected|internal|static|final|abstract|override|fun|suspend)\s+)+(?:[A-Za-z_][\w<>\[\],\s?]*\s+)?([A-Za-z_][\w]*)\s*\([^)]*\)\s*(?:throws\s+[^{]+)?\s*\{/,
     nameGroup: 1,
   },
   {

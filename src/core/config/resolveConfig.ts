@@ -12,6 +12,7 @@ import {
   type CodeSymbol,
 } from "../symbols/regexExtractors";
 import { findDemoFile, DEMO_REPO } from "../demo/tinyRepo";
+import { languageOf } from "../github/fileFilters";
 import type {
   CodeTypeConfig,
   PracticeItem,
@@ -38,7 +39,6 @@ export type ResolvedItemError = {
   label: string;
   kind:
     | "fetch_failed"
-    | "path_missing"
     | "symbol_missing"
     | "invalid_range"
     | "empty_snippet";
@@ -164,10 +164,11 @@ export async function resolveConfig(
     items.push({
       id,
       label: item.label,
-      text: normalizeCode(text),
+      text: text === code ? text : normalizeCode(text),
       path: item.path,
       symbol: symbolName,
       level: item.level,
+      language: languageOf(item.path),
       startLine,
       endLine,
     });

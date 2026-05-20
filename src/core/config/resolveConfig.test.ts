@@ -119,6 +119,46 @@ describe("resolveConfig — error handling", () => {
     expect(r.errors[0].message).toMatch(/Could not find missing\.ts/);
   });
 
+  it("rate_limit / network errors produce 'Could not load' message", async () => {
+    const rate = await resolveConfig(
+      {
+        version: 1,
+        repo: "a/b",
+        title: "t",
+        items: [{ level: "file", path: "x.ts", label: "x" }],
+      },
+      () => fail("rate_limit"),
+    );
+    expect(rate.errors[0].kind).toBe("fetch_failed");
+    expect(rate.errors[0].message).toMatch(/Could not load x\.ts/);
+    expect(rate.errors[0].detail?.kind).toBe("rate_limit");
+
+    const net = await resolveConfig(
+      {
+        version: 1,
+        repo: "a/b",
+        title: "t",
+        items: [{ level: "file", path: "x.ts", label: "x" }],
+      },
+      () => fail("network"),
+    );
+    expect(net.errors[0].detail?.kind).toBe("network");
+  });
+
+  it("populates language on resolved items via file extension", async () => {
+    const fetcher = vi.fn().mockReturnValue(ok("def alpha(): pass\n"));
+    const r = await resolveConfig(
+      {
+        version: 1,
+        repo: "a/b",
+        title: "t",
+        items: [{ level: "file", path: "x.py", label: "x" }],
+      },
+      fetcher,
+    );
+    expect(r.items[0].language).toBe("Python");
+  });
+
   it("collects symbol_missing when extractor finds nothing", async () => {
     const fetcher = vi.fn().mockReturnValue(ok("function alpha() {}\n"));
     const r = await resolveConfig(

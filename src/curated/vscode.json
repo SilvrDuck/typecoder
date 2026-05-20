@@ -3,32 +3,37 @@
   "repo": "microsoft/vscode",
   "ref": "main",
   "title": "VS Code — commands, services, workbench flow",
-  "description": "Trace how VS Code boots its workbench, registers commands, and dispatches them through its instantiation/services layer.",
+  "description": "Trace how VS Code boots, registers commands, and dispatches them through its instantiation/services layer.",
   "items": [
     {
-      "level": "file",
+      "level": "class",
       "path": "src/vs/code/electron-main/main.ts",
-      "label": "Electron main entry"
+      "symbol": "CodeMain",
+      "label": "Electron main entry — CodeMain"
     },
     {
-      "level": "file",
+      "level": "function",
       "path": "src/vs/platform/instantiation/common/instantiation.ts",
-      "label": "Instantiation service contract"
+      "symbol": "createDecorator",
+      "label": "createDecorator — service ID factory"
     },
     {
-      "level": "file",
-      "path": "src/vs/platform/commands/common/commands.ts",
-      "label": "Commands registry"
+      "level": "function",
+      "path": "src/vs/platform/instantiation/common/instantiation.ts",
+      "symbol": "refineServiceDecorator",
+      "label": "refineServiceDecorator — type-narrowing decorator"
     },
     {
-      "level": "file",
-      "path": "src/vs/workbench/workbench.common.main.ts",
-      "label": "Workbench common entry"
-    },
-    {
-      "level": "file",
+      "level": "function",
       "path": "src/vs/platform/configuration/common/configuration.ts",
-      "label": "Configuration service contract"
+      "symbol": "isConfigurationOverrides",
+      "label": "isConfigurationOverrides — type guard"
+    },
+    {
+      "level": "function",
+      "path": "src/vs/platform/configuration/common/configuration.ts",
+      "symbol": "ConfigurationTargetToString",
+      "label": "ConfigurationTargetToString — enum formatter"
     }
   ]
 }

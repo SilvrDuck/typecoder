@@ -35,6 +35,14 @@ describe("regexExtractors — TypeScript/JavaScript", () => {
     expect(syms.find((s) => s.symbol === "notAFunction")).toBeFalsy();
     expect(syms.find((s) => s.symbol === "realOne")).toBeTruthy();
   });
+
+  it("does not match if/while/catch as method-ish functions", () => {
+    const src = `class Foo {\n  method() {\n    if (cond) {\n      return;\n    }\n    while (x) {}\n  }\n}\n`;
+    const syms = extractSymbolsSync("x.ts", src);
+    expect(syms.find((s) => s.symbol === "if")).toBeUndefined();
+    expect(syms.find((s) => s.symbol === "while")).toBeUndefined();
+    expect(syms.find((s) => s.symbol === "method")?.level).toBe("function");
+  });
 });
 
 describe("regexExtractors — Python", () => {
@@ -92,6 +100,21 @@ describe("regexExtractors — Go / Rust / C", () => {
     expect(findSymbol(syms, "EXPORT_SYMBOL")).toBeUndefined();
     expect(findSymbol(syms, "MODULE_LICENSE")).toBeUndefined();
     expect(findSymbol(syms, "actual_fn")).toBeTruthy();
+  });
+});
+
+describe("regexExtractors — Java", () => {
+  it("requires an access modifier to match a method", () => {
+    const src = `class Foo {\n  public int add(int a, int b) {\n    return a + b;\n  }\n  someCall(x);\n}\n`;
+    const syms = extractSymbolsSync("x.java", src);
+    expect(syms.find((s) => s.symbol === "add")?.level).toBe("function");
+    expect(syms.find((s) => s.symbol === "someCall")).toBeUndefined();
+  });
+
+  it("finds Kotlin fun definitions", () => {
+    const src = `class Foo {\n  fun greet(name: String) {\n    return\n  }\n}\n`;
+    const syms = extractSymbolsSync("x.kt", src);
+    expect(syms.find((s) => s.symbol === "greet")?.level).toBe("function");
   });
 });
 

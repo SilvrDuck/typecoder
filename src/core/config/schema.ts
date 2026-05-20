@@ -9,9 +9,10 @@ import { z } from "zod";
  *   - shared
  *   - bundled as a curated session
  *
- * Validation is strict at the top level (no unknown fields silently
- * dropped) but lenient inside items so configs from older versions can
- * still be loaded if they only add metadata. Hard rules live in
+ * Validation is strict everywhere: unknown fields are rejected at the
+ * top level and inside each item, so typos like `paths` instead of
+ * `path` get surfaced immediately rather than silently dropped. Cross-
+ * field rules (symbol-OR-range, startLine <= endLine) live in
  * `validateConfig` so we can surface friendly per-item errors.
  */
 
@@ -149,6 +150,21 @@ export function validateConfig(json: unknown): ValidateResult {
 function humanizeIssue(message: string): string {
   if (message === "Required") return "is required";
   if (message === "Expected number, received undefined") return "is required";
+  if (message.startsWith("Invalid literal value, expected")) {
+    return message.replace("Invalid literal value, expected", "must equal");
+  }
+  if (message.startsWith("String must contain at least 1 character")) {
+    return "is required";
+  }
+  if (message.startsWith("Invalid discriminator value")) {
+    return message.replace(
+      "Invalid discriminator value. Expected",
+      "level must be one of",
+    );
+  }
+  if (message.startsWith("Unrecognized key")) {
+    return message.replace("Unrecognized key(s) in object: ", "unknown field ");
+  }
   return message;
 }
 
