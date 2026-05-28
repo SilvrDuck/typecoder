@@ -88,7 +88,7 @@ test("load any repo rejects malformed repo input", async ({ page }) => {
   await expect(page.getByTestId("lar-parse-error")).toBeVisible();
 });
 
-test("load any repo: mocked GitHub returns suggested session", async ({ page }) => {
+test("load any repo: clicking Start with random file launches a session", async ({ page }) => {
   // Mock both api.github.com and raw URLs
   await page.route("**/api.github.com/repos/**", async (route) => {
     if (route.request().url().includes("/git/trees/")) {
@@ -114,11 +114,19 @@ test("load any repo: mocked GitHub returns suggested session", async ({ page }) 
       });
     }
   });
+  // Mock the raw file fetch so the session can resolve.
+  await page.route("**/raw.githubusercontent.com/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "text/plain",
+      body: "export const hello = () => 'world';\n",
+    });
+  });
 
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
   await page.getByTestId("lar-input").fill("vitejs/vite");
   await page.getByTestId("lar-load").click();
-  await expect(page.getByTestId("lar-loaded")).toBeVisible({ timeout: 10000 });
-  await expect(page.getByTestId("lar-suggested")).toBeVisible();
+  // The session should auto-start on the typing screen.
+  await expect(page.getByTestId("typing-surface")).toBeVisible({ timeout: 10000 });
 });
