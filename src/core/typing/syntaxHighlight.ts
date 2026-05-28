@@ -66,12 +66,21 @@ type AnyHighlighter = HighlighterGeneric<BundledLanguage, BundledTheme>;
 
 let _hlPromise: Promise<AnyHighlighter> | null = null;
 
+/**
+ * Themes chosen to avoid red/orange in the syntax palette so the typing
+ * surface's dotted-red error marker stays visually distinct from
+ * correctly-typed code. Slack-ochin (light) and slack-dark (dark) use
+ * cool cyan/purple/teal accents and don't paint keywords red.
+ */
+const LIGHT_THEME = "slack-ochin";
+const DARK_THEME = "slack-dark";
+
 async function getOrCreateHighlighter(): Promise<AnyHighlighter> {
   if (!_hlPromise) {
     _hlPromise = (async () => {
       const { createHighlighter } = await import("shiki");
       return createHighlighter({
-        themes: ["github-dark", "github-light"],
+        themes: [DARK_THEME, LIGHT_THEME],
         langs: [],
       });
     })();
@@ -98,7 +107,7 @@ export async function buildTokenColorMap(
       return [];
     }
   }
-  const theme: BundledTheme = themeName === "dark" ? "github-dark" : "github-light";
+  const theme: BundledTheme = themeName === "dark" ? DARK_THEME : LIGHT_THEME;
   let tokens;
   try {
     tokens = hl.codeToTokens(code, { lang, theme }).tokens;
