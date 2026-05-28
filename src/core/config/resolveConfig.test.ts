@@ -202,8 +202,46 @@ describe("resolveConfig — error handling", () => {
     expect(r.errors[0].kind).toBe("empty_snippet");
   });
 
-  it("clips a file item without explicit range to a tidbit window", async () => {
-    // 50-line file: 3 imports + blank + 46 real lines.
+  it("picks a single coherent function for a file item without range", async () => {
+    const code = [
+      `import { x } from "./a";`,
+      ``,
+      `function tiny() { return 1; }`,
+      ``,
+      `function midSized(n: number): number {`,
+      `  let total = 0;`,
+      `  for (let i = 0; i < n; i++) {`,
+      `    total += i * 2;`,
+      `  }`,
+      `  return total;`,
+      `}`,
+      ``,
+      `function gigantic() {`,
+      ...Array.from({ length: 80 }, (_, i) => `  const v${i} = ${i};`),
+      `}`,
+    ].join("\n");
+    const r = await resolveConfig(
+      {
+        version: 1,
+        repo: "a/b",
+        title: "t",
+        items: [{ level: "file", path: "x.ts", label: "x" }],
+      },
+      () => Promise.resolve({ ok: true as const, value: code }),
+    );
+    expect(r.errors).toEqual([]);
+    const item = r.items[0];
+    // Should land on midSized (the goldilocks function), in full.
+    expect(item.symbol).toBe("midSized");
+    expect(item.text).toContain("function midSized");
+    expect(item.text).toContain("return total;");
+    // No arbitrary line cap — the whole midSized function is included.
+    expect(item.text.trim().endsWith("}")).toBe(true);
+  });
+
+  it("falls back to a smart line window when a file has no symbols", async () => {
+    // 50-line file of bare const assignments — regex extractor finds
+    // nothing function-like.
     const lines = [
       `import { x } from "./a";`,
       `import { y } from "./b";`,
@@ -223,11 +261,8 @@ describe("resolveConfig — error handling", () => {
     );
     expect(r.errors).toEqual([]);
     const item = r.items[0];
-    // Window skipped 3 imports + 1 blank (4 lines), so startLine = 5.
+    // Smart window skipped 3 imports + 1 blank → startLine 5.
     expect(item.startLine).toBe(5);
-    // And clipped to MAX_LINES_PER_ITEM = 30 lines.
-    expect(item.text.split("\n").length).toBeLessThanOrEqual(30);
-    expect(item.endLine).toBe(item.startLine! + item.text.split("\n").length - 1);
     expect(item.text.startsWith("const line1 ")).toBe(true);
   });
 

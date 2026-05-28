@@ -256,7 +256,7 @@ export const PROMPT_SCHEMA_TEXT = `{
   "ref": "main",
   "title": "string",
   "description": "string",
-  "clip": "tidbits | off (optional, default 'tidbits' — short navigation snippets; 'off' = type full files / full symbol bodies)",
+  "clip": "tidbits | off (optional, default 'tidbits' — one coherent unit (function/class) per item; 'off' = type full files)",
   "items": [
     {
       "level": "file | class | function",
@@ -316,18 +316,19 @@ Rules (default — navigation tour):
 - Do not invent symbols.
 - Produce 10 to 15 items. The user is *navigating* the codebase — favor
   breadth (many short stops) over depth (a few long reads).
-- Each item should be a short tidbit: at most 30 lines of code. Use
-  startLine/endLine to bound large files or large functions to a
-  meaningful 10–25 line excerpt.
-- Prefer small functions, methods, or focused line ranges over whole
-  files. If a class is large, target one of its methods or a 10–25 line
-  range, not the whole class.
+- Each item should be a single coherent unit — preferably one function
+  or one small class. Aim for something readable in one sitting (roughly
+  5–60 lines). If the function is huge, pick a smaller helper that
+  represents the same idea, or use startLine/endLine to bound a focused
+  excerpt — but never chop mid-statement.
+- Prefer named symbols (function/class with "symbol") over file items,
+  so the user types whole units, not arbitrary slices.
 - Order items so a developer can understand the codebase progressively.
 - Avoid generated files, lockfiles, vendored code, and minified files.
 - Include short labels explaining why each item matters.
 
-If the user explicitly asks for full files (no clipping) instead of a
-navigation tour: set top-level "clip": "off" and omit startLine/endLine
-on items. The resolver will then type each file or symbol in full.
+If the user explicitly asks for full files instead of a navigation
+tour: set top-level "clip": "off" and use file items without
+startLine/endLine. The resolver will then type each file in full.
 `;
 }

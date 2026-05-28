@@ -110,7 +110,8 @@ describe("buildPrompt", () => {
   it("instructs the LLM to produce short navigation tidbits", () => {
     const p = buildPrompt({ repo: "x/y", templateId: "understand-codebase" });
     expect(p).toContain("Produce 10 to 15 items");
-    expect(p).toContain("at most 30 lines");
+    expect(p).toMatch(/single coherent unit/);
     expect(p).toMatch(/startLine\/endLine/);
+    expect(p).toMatch(/clip.*off/);
   });
 });

@@ -20,6 +20,8 @@ export function LoadAnyRepo() {
   );
 }
 
+const REPO_PLACEHOLDER = "github.com/vitejs/vite";
+
 function shuffleInPlace<T>(arr: T[]): void {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -37,7 +39,14 @@ export function LoadAnyRepoBody() {
   async function startWithRandomFile() {
     setParseError(null);
     setFetchError(null);
-    const parsed = parseRepoInput(draft.input);
+    // Empty input: treat the placeholder as a click-to-try suggestion
+    // (and reflect that back into the input so the user sees what we used).
+    let raw = draft.input;
+    if (!raw.trim()) {
+      raw = REPO_PLACEHOLDER;
+      setDraft({ input: raw });
+    }
+    const parsed = parseRepoInput(raw);
     if (!parsed) {
       setParseError("That doesn't look like a GitHub repository.");
       return;
@@ -92,7 +101,7 @@ export function LoadAnyRepoBody() {
         <Label>Repository</Label>
         <div className="flex gap-2">
           <Input
-            placeholder="github.com/vitejs/vite"
+            placeholder={REPO_PLACEHOLDER}
             value={draft.input}
             onChange={(e) => setDraft({ input: e.target.value })}
             onKeyDown={(e) => {

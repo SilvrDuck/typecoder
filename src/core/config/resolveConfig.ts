@@ -15,11 +15,18 @@ import { findDemoFile, DEMO_REPO } from "../demo/tinyRepo";
 import { languageOf } from "../github/fileFilters";
 
 /**
- * Hard cap on lines per item. Sessions feel like *navigating* a codebase
- * — short tidbits that the user moves between — rather than slogging
- * through 200-line walls of code.
+ * Soft preference for symbol selection in tidbit mode: a single
+ * function whose body falls roughly in this band reads as "one
+ * coherent stop" rather than a giant slog or a trivial one-liner.
+ *
+ * No hard line cap is enforced — we'd rather keep a function whole
+ * than chop it at an arbitrary line. Resolver falls back to a smart
+ * line window only when a file has no extractable symbols at all.
  */
-export const MAX_LINES_PER_ITEM = 30;
+const SYMBOL_PREFERRED_MIN = 5;
+const SYMBOL_PREFERRED_MAX = 60;
+const SYMBOL_SWEET_SPOT = 20;
+const FALLBACK_WINDOW_LINES = 30;
 import type {
   CodeTypeConfig,
   PracticeItem,
@@ -128,15 +135,25 @@ export async function resolveConfig(
         startLine = item.startLine;
         endLine = item.endLine;
       } else if (tidbits) {
-        // Default tidbit mode: skip preamble (blank lines, comments,
-        // imports) and take MAX_LINES_PER_ITEM lines from there.
-        const totalLines = code.split("\n").length;
-        const ws = findWindowStart(code);
-        const we = Math.min(totalLines, ws + MAX_LINES_PER_ITEM - 1);
-        if (ws > 1 || we < totalLines) {
-          text = extractByLineRange(code, ws, we);
-          startLine = ws;
-          endLine = we;
+        // Default tidbit mode: pick a single coherent symbol (function
+        // or class) from the file so the user lands on one whole
+        // chunk rather than an arbitrary slice. Fall back to a line
+        // window past the import preamble when no symbols are found.
+        const sym = await pickTidbitSymbol(item.path, code);
+        if (sym) {
+          text = extractByLineRange(code, sym.startLine, sym.endLine);
+          startLine = sym.startLine;
+          endLine = sym.endLine;
+          symbolName = sym.symbol;
+        } else {
+          const totalLines = code.split("\n").length;
+          const ws = findWindowStart(code);
+          const we = Math.min(totalLines, ws + FALLBACK_WINDOW_LINES - 1);
+          if (ws > 1 || we < totalLines) {
+            text = extractByLineRange(code, ws, we);
+            startLine = ws;
+            endLine = we;
+          }
         }
       }
       // clip: "off" with no range → whole file (text already === code)
@@ -163,12 +180,10 @@ export async function resolveConfig(
           });
           continue;
         }
-        const symEnd = tidbits
-          ? Math.min(sym.endLine, sym.startLine + MAX_LINES_PER_ITEM - 1)
-          : sym.endLine;
-        text = extractByLineRange(code, sym.startLine, symEnd);
+        // Named symbol: type it in full (no arbitrary line cap).
+        text = extractByLineRange(code, sym.startLine, sym.endLine);
         startLine = sym.startLine;
-        endLine = symEnd;
+        endLine = sym.endLine;
       } else {
         errors.push({
           index: i,
@@ -235,6 +250,36 @@ function rangeError(i: number, item: PracticeItem): ResolvedItemError {
     kind: "invalid_range",
     message: `Item ${i + 1} has startLine > endLine.`,
   };
+}
+
+/**
+ * Score-and-pick the most "navigation-friendly" symbol from a file:
+ * a function or class whose body lands roughly in
+ * [SYMBOL_PREFERRED_MIN..SYMBOL_PREFERRED_MAX] lines, ideally near
+ * SYMBOL_SWEET_SPOT. Returns undefined when the file has no symbols.
+ */
+async function pickTidbitSymbol(
+  path: string,
+  code: string,
+): Promise<CodeSymbol | undefined> {
+  const symbols = await extractSymbols(path, code);
+  if (symbols.length === 0) return undefined;
+
+  let bestScore = -Infinity;
+  let best: CodeSymbol | undefined;
+  for (const s of symbols) {
+    const size = s.endLine - s.startLine + 1;
+    let score = -Math.abs(SYMBOL_SWEET_SPOT - size);
+    if (size >= SYMBOL_PREFERRED_MIN && size <= SYMBOL_PREFERRED_MAX) {
+      score += 50;
+    }
+    if (size < SYMBOL_PREFERRED_MIN) score -= 20; // skip trivial one-liners
+    if (score > bestScore) {
+      bestScore = score;
+      best = s;
+    }
+  }
+  return best;
 }
 
 /**
