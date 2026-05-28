@@ -240,14 +240,14 @@ function colorClass(status: CharStatus): string {
     case "correct":
       return "text-ink-100";
     case "wrong":
-      return "text-err underline decoration-wavy decoration-err decoration-2 underline-offset-4";
+      return "text-err underline decoration-dotted decoration-err decoration-2 underline-offset-4";
     case "extra":
-      return "text-err underline decoration-wavy decoration-err decoration-2 underline-offset-4";
+      return "text-err underline decoration-dotted decoration-err decoration-2 underline-offset-4";
     case "missed":
       // Skipped via smart-space: expected char shown in dimmed red so the
       // user sees what they didn't type. Distinct from "wrong" (which is
       // a typed-char overlay) and from "pending" (which is dim grey).
-      return "text-err/70 underline decoration-wavy decoration-err/60 underline-offset-4";
+      return "text-err/70 underline decoration-dotted decoration-err/60 decoration-2 underline-offset-4";
   }
 }
 
