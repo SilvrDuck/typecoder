@@ -25,16 +25,17 @@ export function CustomHub() {
 
         <Section heading="01 · type right away">
           <LoadAnyRepoBody />
-          <p className="font-mono text-2xs uppercase tracking-wider text-ink-500 mt-4">
-            or, for a guided session ↓
-          </p>
         </Section>
 
-        <Section heading="02 · build a config with an LLM" className="mt-12">
+        <OrDivider label="or, for a guided session" />
+
+        <Section heading="02 · build a config with an LLM">
           <PromptBuilderBody repoOverride={repoOverride} />
         </Section>
 
-        <Section heading="03 · paste a config" className="mt-12">
+        <OrDivider label="or, paste a config you already have" />
+
+        <Section heading="03 · paste a config">
           <PasteConfigBody />
         </Section>
 
@@ -63,5 +64,17 @@ function Section({
       </p>
       {children}
     </section>
+  );
+}
+
+function OrDivider({ label }: { label: string }) {
+  return (
+    <div className="my-14 flex items-center gap-5">
+      <div className="flex-1 border-t border-ink-600" />
+      <span className="font-mono text-sm text-ink-100">
+        {label} <span className="text-accent">↓</span>
+      </span>
+      <div className="flex-1 border-t border-ink-600" />
+    </div>
   );
 }
