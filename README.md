@@ -1,5 +1,7 @@
 # CodeType
 
+**Live app:** https://silvrduck.github.io/typecoder/
+
 Type real code. Understand real codebases.
 
 CodeType is a static, browser-only typing trainer for public GitHub repositories. It's built for the same reason `monkeytype` exists for prose — sometimes you want to type, and the act of typing real source code is a tactile way to actually read it.
