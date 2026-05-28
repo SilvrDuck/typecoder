@@ -30,7 +30,11 @@ export function PromptBuilder() {
   );
 }
 
-export function PromptBuilderBody() {
+export function PromptBuilderBody({
+  repoOverride,
+}: {
+  repoOverride?: { repo: string; ref?: string } | null;
+} = {}) {
   const draft = useAppStore((s) => s.promptBuilder);
   const setDraft = useAppStore((s) => s.setPromptBuilder);
   const [copied, setCopied] = useState<"" | "prompt" | "schema">("");
@@ -40,15 +44,18 @@ export function PromptBuilderBody() {
     [draft.templateId],
   );
 
+  const effectiveRepo = repoOverride?.repo.trim() || draft.repo.trim();
+  const effectiveRef = repoOverride?.ref?.trim() || draft.ref.trim();
+
   const prompt = useMemo(
     () =>
       buildPrompt({
-        repo: draft.repo.trim() || "owner/repo",
-        ref: draft.ref.trim() || undefined,
+        repo: effectiveRepo || "owner/repo",
+        ref: effectiveRef || undefined,
         templateId: draft.templateId as PromptTemplateId,
         customFocus: draft.customFocus,
       }),
-    [draft],
+    [effectiveRepo, effectiveRef, draft.templateId, draft.customFocus],
   );
 
   async function copyText(text: string, label: "prompt" | "schema") {
@@ -78,24 +85,45 @@ export function PromptBuilderBody() {
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-6">
           {/* Controls */}
           <Panel>
-            <div className="mb-5">
-              <Label>Repository</Label>
-              <Input
-                placeholder="owner/repo"
-                value={draft.repo}
-                onChange={(e) => setDraft({ repo: e.target.value })}
-                data-testid="pb-repo"
-              />
-            </div>
-            <div className="mb-5">
-              <Label>Ref (optional)</Label>
-              <Input
-                placeholder="main"
-                value={draft.ref}
-                onChange={(e) => setDraft({ ref: e.target.value })}
-                data-testid="pb-ref"
-              />
-            </div>
+            {repoOverride ? (
+              <div className="mb-5" data-testid="pb-repo-inherited">
+                <Label>Repository</Label>
+                <p className="font-mono text-sm text-ink-100">
+                  {effectiveRepo || (
+                    <span className="text-ink-500">
+                      paste a repo above to fill this in
+                    </span>
+                  )}
+                  {effectiveRepo && effectiveRef && (
+                    <span className="text-ink-400 ml-2">{effectiveRef}</span>
+                  )}
+                </p>
+                <p className="text-2xs text-ink-500 font-mono mt-1">
+                  from step 01 ↑
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-5">
+                  <Label>Repository</Label>
+                  <Input
+                    placeholder="owner/repo"
+                    value={draft.repo}
+                    onChange={(e) => setDraft({ repo: e.target.value })}
+                    data-testid="pb-repo"
+                  />
+                </div>
+                <div className="mb-5">
+                  <Label>Ref (optional)</Label>
+                  <Input
+                    placeholder="main"
+                    value={draft.ref}
+                    onChange={(e) => setDraft({ ref: e.target.value })}
+                    data-testid="pb-ref"
+                  />
+                </div>
+              </>
+            )}
             <div className="mb-5">
               <Label>Goal</Label>
               <Select

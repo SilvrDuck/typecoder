@@ -37,12 +37,11 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: /Custom session/i })).toBeInTheDocument();
     // 1) Load-any-repo input is present
     expect(screen.getByTestId("lar-input")).toBeInTheDocument();
-    // 2) Paste-config textarea is present
+    // 2) Prompt-builder is always visible (no toggle) and inherits the repo
+    expect(screen.getByTestId("pb-preview")).toBeInTheDocument();
+    expect(screen.getByTestId("pb-repo-inherited")).toBeInTheDocument();
+    // 3) Paste-config textarea is present
     expect(screen.getByTestId("paste-textarea")).toBeInTheDocument();
-    // 3) Prompt-builder is collapsed by default; toggle reveals it
-    expect(screen.queryByTestId("custom-builder-body")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("custom-builder-toggle"));
-    expect(screen.getByTestId("custom-builder-body")).toBeInTheDocument();
   });
 
   it("clicking the Mark on the custom hub returns to landing", () => {

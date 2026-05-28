@@ -84,7 +84,7 @@ test("tablet layout: custom hub renders consolidated flows", async ({ browser })
   await page.getByTestId("landing-custom").click();
   await expect(page.getByTestId("lar-input")).toBeVisible();
   await expect(page.getByTestId("paste-textarea")).toBeVisible();
-  await expect(page.getByTestId("custom-builder-toggle")).toBeVisible();
+  await expect(page.getByTestId("pb-preview")).toBeVisible();
   await context.close();
 });
 

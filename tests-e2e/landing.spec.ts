@@ -33,7 +33,7 @@ test("Custom opens consolidated hub with all flows on one page", async ({ page }
   await expect(page.getByRole("heading", { name: /Custom session/i })).toBeVisible();
   await expect(page.getByTestId("lar-input")).toBeVisible();
   await expect(page.getByTestId("paste-textarea")).toBeVisible();
-  await expect(page.getByTestId("custom-builder-toggle")).toBeVisible();
+  await expect(page.getByTestId("pb-preview")).toBeVisible();
 });
 
 test("Enter key on landing triggers Type right away", async ({ page }) => {

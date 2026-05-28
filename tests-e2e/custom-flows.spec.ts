@@ -3,7 +3,6 @@ import { test, expect } from "@playwright/test";
 test("prompt builder is reactive when template changes", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-builder-toggle").click();
 
   // Default template is trace-execution
   await expect(page.getByTestId("pb-best-for")).toContainText(
@@ -24,7 +23,6 @@ test("prompt builder reveals custom focus field for Custom template", async ({
 }) => {
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-builder-toggle").click();
 
   await expect(page.getByTestId("pb-custom-focus-row")).toHaveCount(0);
   await page.getByTestId("pb-template").selectOption("custom");
@@ -36,12 +34,15 @@ test("prompt builder reveals custom focus field for Custom template", async ({
   );
 });
 
-test("prompt builder copy prompt updates button label", async ({ page, context }) => {
+test("prompt builder inherits repo from step 01", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await page.getByTestId("landing-custom").click();
-  await page.getByTestId("custom-builder-toggle").click();
-  await page.getByTestId("pb-repo").fill("vitejs/vite");
+  // The dedicated pb-repo input is gone in the hub; the repo comes from step 01.
+  await expect(page.getByTestId("pb-repo")).toHaveCount(0);
+  await page.getByTestId("lar-input").fill("vitejs/vite");
+  await expect(page.getByTestId("pb-repo-inherited")).toContainText("vitejs/vite");
+  await expect(page.getByTestId("pb-preview")).toContainText("vitejs/vite");
   await page.getByTestId("pb-copy-prompt").click();
   await expect(page.getByTestId("pb-copy-prompt")).toContainText(/Copied/);
 });
