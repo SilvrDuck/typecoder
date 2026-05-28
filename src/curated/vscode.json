@@ -3,13 +3,25 @@
   "repo": "microsoft/vscode",
   "ref": "main",
   "title": "VS Code — commands, services, workbench flow",
-  "description": "Trace how VS Code boots, registers commands, and dispatches them through its instantiation/services layer.",
+  "description": "Short stops through VS Code: events, lifetimes, services, configuration, electron boot.",
   "items": [
     {
       "level": "class",
       "path": "src/vs/code/electron-main/main.ts",
       "symbol": "CodeMain",
       "label": "Electron main entry — CodeMain"
+    },
+    {
+      "level": "class",
+      "path": "src/vs/base/common/event.ts",
+      "symbol": "Emitter",
+      "label": "Emitter — the eventing primitive"
+    },
+    {
+      "level": "class",
+      "path": "src/vs/base/common/lifecycle.ts",
+      "symbol": "Disposable",
+      "label": "Disposable — lifetime base class"
     },
     {
       "level": "function",

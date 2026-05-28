@@ -3,7 +3,7 @@
   "repo": "fastapi/fastapi",
   "ref": "master",
   "title": "FastAPI — routing, validation, dependency injection",
-  "description": "Follow how FastAPI turns a request into a response: app construction, routing, dependency resolution, JSON encoding.",
+  "description": "Short stops along the request lifecycle: app, router, params, dependencies, encoders, exceptions.",
   "items": [
     {
       "level": "class",
@@ -18,10 +18,22 @@
       "label": "APIRouter — route registration"
     },
     {
-      "level": "function",
-      "path": "fastapi/encoders.py",
-      "symbol": "jsonable_encoder",
-      "label": "Recursive JSON encoder"
+      "level": "class",
+      "path": "fastapi/params.py",
+      "symbol": "Query",
+      "label": "Query parameter declaration"
+    },
+    {
+      "level": "class",
+      "path": "fastapi/params.py",
+      "symbol": "Path",
+      "label": "Path parameter declaration"
+    },
+    {
+      "level": "class",
+      "path": "fastapi/params.py",
+      "symbol": "Body",
+      "label": "Body parameter declaration"
     },
     {
       "level": "function",
@@ -30,16 +42,16 @@
       "label": "Dependency resolution"
     },
     {
+      "level": "function",
+      "path": "fastapi/encoders.py",
+      "symbol": "jsonable_encoder",
+      "label": "Recursive JSON encoder"
+    },
+    {
       "level": "class",
       "path": "fastapi/exceptions.py",
       "symbol": "HTTPException",
       "label": "HTTPException base class"
-    },
-    {
-      "level": "class",
-      "path": "fastapi/params.py",
-      "symbol": "Query",
-      "label": "Query parameter declaration"
     }
   ]
 }

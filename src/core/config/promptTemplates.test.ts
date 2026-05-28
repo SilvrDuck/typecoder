@@ -107,8 +107,10 @@ describe("buildPrompt", () => {
     }
   });
 
-  it("includes the typing-practice sizing hint (8 to 20 items)", () => {
+  it("instructs the LLM to produce short navigation tidbits", () => {
     const p = buildPrompt({ repo: "x/y", templateId: "understand-codebase" });
-    expect(p).toContain("Prefer 8 to 20 items");
+    expect(p).toContain("Produce 10 to 15 items");
+    expect(p).toContain("at most 30 lines");
+    expect(p).toMatch(/startLine\/endLine/);
   });
 });

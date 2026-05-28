@@ -20,6 +20,13 @@ export function LoadAnyRepo() {
   );
 }
 
+function shuffleInPlace<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
 export function LoadAnyRepoBody() {
   const draft = useAppStore((s) => s.loadAnyRepo);
   const setDraft = useAppStore((s) => s.setLoadAnyRepo);
@@ -50,12 +57,13 @@ export function LoadAnyRepoBody() {
         return;
       }
       const suggested = buildSuggestedSession(tree.value.entries, {
-        length: "short",
+        length: "medium",
         difficulty: "realistic",
       });
-      const top = suggested.files.slice(0, 5);
-      const pick = top[Math.floor(Math.random() * top.length)];
-      if (!pick) {
+      const pool = suggested.files.slice(0, 12);
+      shuffleInPlace(pool);
+      const picks = pool.slice(0, 6);
+      if (picks.length === 0) {
         setFetchError("No usable source files found in this repo.");
         return;
       }
@@ -64,14 +72,12 @@ export function LoadAnyRepoBody() {
           version: 1,
           repo: `${parsed.owner}/${parsed.repo}`,
           ref,
-          title: `${parsed.owner}/${parsed.repo} — ${pick.path.split("/").pop() ?? pick.path}`,
-          items: [
-            {
-              level: "file" as const,
-              path: pick.path,
-              label: pick.path.split("/").pop() ?? pick.path,
-            },
-          ],
+          title: `${parsed.owner}/${parsed.repo} — exploring`,
+          items: picks.map((f) => ({
+            level: "file" as const,
+            path: f.path,
+            label: f.path.split("/").pop() ?? f.path,
+          })),
         },
         `${parsed.owner}/${parsed.repo}@${ref}`,
       );
@@ -102,7 +108,7 @@ export function LoadAnyRepoBody() {
             disabled={busy}
             data-testid="lar-load"
           >
-            {busy ? "Starting…" : "Start with random file"}
+            {busy ? "Starting…" : "Start exploring"}
           </Button>
         </div>
         {parseError && (

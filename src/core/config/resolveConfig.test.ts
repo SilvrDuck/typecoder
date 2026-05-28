@@ -202,6 +202,59 @@ describe("resolveConfig — error handling", () => {
     expect(r.errors[0].kind).toBe("empty_snippet");
   });
 
+  it("clips a file item without explicit range to a tidbit window", async () => {
+    // 50-line file: 3 imports + blank + 46 real lines.
+    const lines = [
+      `import { x } from "./a";`,
+      `import { y } from "./b";`,
+      `import { z } from "./c";`,
+      ``,
+      ...Array.from({ length: 46 }, (_, i) => `const line${i + 1} = ${i + 1};`),
+    ];
+    const code = lines.join("\n");
+    const r = await resolveConfig(
+      {
+        version: 1,
+        repo: "a/b",
+        title: "t",
+        items: [{ level: "file", path: "x.ts", label: "x" }],
+      },
+      () => Promise.resolve({ ok: true as const, value: code }),
+    );
+    expect(r.errors).toEqual([]);
+    const item = r.items[0];
+    // Window skipped 3 imports + 1 blank (4 lines), so startLine = 5.
+    expect(item.startLine).toBe(5);
+    // And clipped to MAX_LINES_PER_ITEM = 30 lines.
+    expect(item.text.split("\n").length).toBeLessThanOrEqual(30);
+    expect(item.endLine).toBe(item.startLine! + item.text.split("\n").length - 1);
+    expect(item.text.startsWith("const line1 ")).toBe(true);
+  });
+
+  it("clips an explicit line range that exceeds the cap", async () => {
+    const code = Array.from({ length: 100 }, (_, i) => `line${i + 1}`).join("\n");
+    const r = await resolveConfig(
+      {
+        version: 1,
+        repo: "a/b",
+        title: "t",
+        items: [
+          {
+            level: "file",
+            path: "x.ts",
+            label: "x",
+            startLine: 1,
+            endLine: 80,
+          },
+        ],
+      },
+      () => Promise.resolve({ ok: true as const, value: code }),
+    );
+    expect(r.errors).toEqual([]);
+    expect(r.items[0].text.split("\n").length).toBeLessThanOrEqual(30);
+    expect(r.items[0].endLine).toBe(30);
+  });
+
   it("continues past errors and resolves later items", async () => {
     const fetcher = vi
       .fn()

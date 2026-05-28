@@ -313,11 +313,16 @@ Rules:
 - Use real symbols from the repo.
 - Do not invent paths.
 - Do not invent symbols.
-- Prefer 8 to 20 items.
-- Prefer functions/classes over full files.
+- Produce 10 to 15 items. The user is *navigating* the codebase — favor
+  breadth (many short stops) over depth (a few long reads).
+- Each item must be a short tidbit: at most 30 lines of code. Use
+  startLine/endLine to bound large files or large functions to a
+  meaningful 10–25 line excerpt.
+- Prefer small functions, methods, or focused line ranges over whole
+  files. If a class is large, target one of its methods or a 10–25 line
+  range, not the whole class.
 - Order items so a developer can understand the codebase progressively.
-- Keep each item useful for typing practice (avoid huge files).
-- Avoid generated files, lockfiles, vendored code, huge files, and minified files.
+- Avoid generated files, lockfiles, vendored code, and minified files.
 - Include short labels explaining why each item matters.
 `;
 }

@@ -13,6 +13,13 @@ import {
 } from "../symbols/regexExtractors";
 import { findDemoFile, DEMO_REPO } from "../demo/tinyRepo";
 import { languageOf } from "../github/fileFilters";
+
+/**
+ * Hard cap on lines per item. Sessions feel like *navigating* a codebase
+ * — short tidbits that the user moves between — rather than slogging
+ * through 200-line walls of code.
+ */
+export const MAX_LINES_PER_ITEM = 30;
 import type {
   CodeTypeConfig,
   PracticeItem,
@@ -113,6 +120,18 @@ export async function resolveConfig(
         text = extractByLineRange(code, item.startLine, item.endLine);
         startLine = item.startLine;
         endLine = item.endLine;
+      } else {
+        // No explicit range: skip preamble (blank lines, comments,
+        // imports) and take MAX_LINES_PER_ITEM lines from there so a
+        // file item feels like a tidbit rather than the whole file.
+        const totalLines = code.split("\n").length;
+        const ws = findWindowStart(code);
+        const we = Math.min(totalLines, ws + MAX_LINES_PER_ITEM - 1);
+        if (ws > 1 || we < totalLines) {
+          text = extractByLineRange(code, ws, we);
+          startLine = ws;
+          endLine = we;
+        }
       }
     } else {
       // function or class — prefer line range if both are supplied, else
@@ -137,9 +156,13 @@ export async function resolveConfig(
           });
           continue;
         }
-        text = extractByLineRange(code, sym.startLine, sym.endLine);
+        const symEnd = Math.min(
+          sym.endLine,
+          sym.startLine + MAX_LINES_PER_ITEM - 1,
+        );
+        text = extractByLineRange(code, sym.startLine, symEnd);
         startLine = sym.startLine;
-        endLine = sym.endLine;
+        endLine = symEnd;
       } else {
         errors.push({
           index: i,
@@ -148,6 +171,17 @@ export async function resolveConfig(
           message: `Item ${i + 1} (${item.level}) needs a symbol or a line range to resolve.`,
         });
         continue;
+      }
+    }
+
+    // Final clip pass: even when the caller supplied an explicit range
+    // or a symbol resolved to a huge body, never let a single item run
+    // past MAX_LINES_PER_ITEM lines.
+    const lineCount = text.split("\n").length;
+    if (lineCount > MAX_LINES_PER_ITEM) {
+      text = text.split("\n").slice(0, MAX_LINES_PER_ITEM).join("\n");
+      if (startLine !== undefined) {
+        endLine = startLine + MAX_LINES_PER_ITEM - 1;
       }
     }
 
@@ -206,6 +240,32 @@ function rangeError(i: number, item: PracticeItem): ResolvedItemError {
     kind: "invalid_range",
     message: `Item ${i + 1} has startLine > endLine.`,
   };
+}
+
+/**
+ * Find a 1-indexed line where a "tidbit" window should start: skip
+ * leading blank lines, single-line comments, and import-like preamble
+ * so we land on real code. Falls back to line 1 if nothing else looks
+ * like the start.
+ */
+function findWindowStart(code: string, maxSkip = 60): number {
+  const lines = code.split("\n");
+  const SKIP_RE =
+    /^\s*(\/\/|#(?!include|define|pragma)|--|\*|\/\*|<!--)/;
+  const PREAMBLE_RE =
+    /^\s*(import|from|use(?!r)|using|require|include|package|#include|#define|#pragma|@import|namespace|<\?php|<%|export\s+\*|export\s+\{|export\s+type|export\s+interface)\b/;
+  let i = 0;
+  const limit = Math.min(lines.length, maxSkip);
+  while (i < limit) {
+    const line = lines[i];
+    if (line.trim() === "" || SKIP_RE.test(line) || PREAMBLE_RE.test(line)) {
+      i++;
+      continue;
+    }
+    break;
+  }
+  if (i >= lines.length) return 1;
+  return i + 1;
 }
 
 // Re-export for convenience
