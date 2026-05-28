@@ -66,6 +66,13 @@ export const CodeTypeConfigSchema = z
     ref: z.string().optional(),
     title: NonEmptyString,
     description: z.string().optional(),
+    /**
+     * Default `"tidbits"` clips every item to a short navigation-friendly
+     * window. Set to `"off"` to type full files / full symbol bodies as
+     * authored — useful when the user specifically asks the LLM for full
+     * files instead of a navigation tour.
+     */
+    clip: z.enum(["tidbits", "off"]).optional(),
     items: z.array(PracticeItemSchema).min(1, "At least one item is required"),
   })
   .strict();

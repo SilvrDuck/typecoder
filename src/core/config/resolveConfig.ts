@@ -79,6 +79,12 @@ export async function resolveConfig(
   const items: ResolvedItem[] = [];
   const errors: ResolvedItemError[] = [];
 
+  // Tidbit clipping is the default. Configs that explicitly opt out
+  // ("clip": "off") get full file / full symbol bodies — useful when
+  // the user asked the LLM for full files instead of a tour.
+  const clipMode = config.clip ?? "tidbits";
+  const tidbits = clipMode === "tidbits";
+
   // For the bundled demo repo, never hit the network — read from memory.
   const isDemo = config.repo === DEMO_REPO;
 
@@ -117,13 +123,13 @@ export async function resolveConfig(
           errors.push(rangeError(i, item));
           continue;
         }
+        // Explicit user-supplied range is respected as-is (no clip).
         text = extractByLineRange(code, item.startLine, item.endLine);
         startLine = item.startLine;
         endLine = item.endLine;
-      } else {
-        // No explicit range: skip preamble (blank lines, comments,
-        // imports) and take MAX_LINES_PER_ITEM lines from there so a
-        // file item feels like a tidbit rather than the whole file.
+      } else if (tidbits) {
+        // Default tidbit mode: skip preamble (blank lines, comments,
+        // imports) and take MAX_LINES_PER_ITEM lines from there.
         const totalLines = code.split("\n").length;
         const ws = findWindowStart(code);
         const we = Math.min(totalLines, ws + MAX_LINES_PER_ITEM - 1);
@@ -133,6 +139,7 @@ export async function resolveConfig(
           endLine = we;
         }
       }
+      // clip: "off" with no range → whole file (text already === code)
     } else {
       // function or class — prefer line range if both are supplied, else
       // try the symbol extractor.
@@ -156,10 +163,9 @@ export async function resolveConfig(
           });
           continue;
         }
-        const symEnd = Math.min(
-          sym.endLine,
-          sym.startLine + MAX_LINES_PER_ITEM - 1,
-        );
+        const symEnd = tidbits
+          ? Math.min(sym.endLine, sym.startLine + MAX_LINES_PER_ITEM - 1)
+          : sym.endLine;
         text = extractByLineRange(code, sym.startLine, symEnd);
         startLine = sym.startLine;
         endLine = symEnd;
@@ -171,17 +177,6 @@ export async function resolveConfig(
           message: `Item ${i + 1} (${item.level}) needs a symbol or a line range to resolve.`,
         });
         continue;
-      }
-    }
-
-    // Final clip pass: even when the caller supplied an explicit range
-    // or a symbol resolved to a huge body, never let a single item run
-    // past MAX_LINES_PER_ITEM lines.
-    const lineCount = text.split("\n").length;
-    if (lineCount > MAX_LINES_PER_ITEM) {
-      text = text.split("\n").slice(0, MAX_LINES_PER_ITEM).join("\n");
-      if (startLine !== undefined) {
-        endLine = startLine + MAX_LINES_PER_ITEM - 1;
       }
     }
 

@@ -231,7 +231,7 @@ describe("resolveConfig — error handling", () => {
     expect(item.text.startsWith("const line1 ")).toBe(true);
   });
 
-  it("clips an explicit line range that exceeds the cap", async () => {
+  it("respects an explicit line range as-is, even when it exceeds the cap", async () => {
     const code = Array.from({ length: 100 }, (_, i) => `line${i + 1}`).join("\n");
     const r = await resolveConfig(
       {
@@ -251,8 +251,25 @@ describe("resolveConfig — error handling", () => {
       () => Promise.resolve({ ok: true as const, value: code }),
     );
     expect(r.errors).toEqual([]);
-    expect(r.items[0].text.split("\n").length).toBeLessThanOrEqual(30);
-    expect(r.items[0].endLine).toBe(30);
+    expect(r.items[0].text.split("\n").length).toBe(80);
+    expect(r.items[0].endLine).toBe(80);
+  });
+
+  it("clip: \"off\" disables tidbit windowing — returns whole file", async () => {
+    const code = Array.from({ length: 100 }, (_, i) => `line${i + 1}`).join("\n");
+    const r = await resolveConfig(
+      {
+        version: 1,
+        repo: "a/b",
+        title: "t",
+        clip: "off",
+        items: [{ level: "file", path: "x.ts", label: "x" }],
+      },
+      () => Promise.resolve({ ok: true as const, value: code }),
+    );
+    expect(r.errors).toEqual([]);
+    expect(r.items[0].text.split("\n").length).toBe(100);
+    expect(r.items[0].startLine).toBeUndefined();
   });
 
   it("continues past errors and resolves later items", async () => {

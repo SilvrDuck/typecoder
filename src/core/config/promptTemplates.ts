@@ -256,6 +256,7 @@ export const PROMPT_SCHEMA_TEXT = `{
   "ref": "main",
   "title": "string",
   "description": "string",
+  "clip": "tidbits | off (optional, default 'tidbits' — short navigation snippets; 'off' = type full files / full symbol bodies)",
   "items": [
     {
       "level": "file | class | function",
@@ -307,7 +308,7 @@ ${prioritize}
 Avoid:
 ${avoid}
 
-Rules:
+Rules (default — navigation tour):
 - Output valid JSON only — no commentary, no markdown fence.
 - Use real paths from the repo.
 - Use real symbols from the repo.
@@ -315,7 +316,7 @@ Rules:
 - Do not invent symbols.
 - Produce 10 to 15 items. The user is *navigating* the codebase — favor
   breadth (many short stops) over depth (a few long reads).
-- Each item must be a short tidbit: at most 30 lines of code. Use
+- Each item should be a short tidbit: at most 30 lines of code. Use
   startLine/endLine to bound large files or large functions to a
   meaningful 10–25 line excerpt.
 - Prefer small functions, methods, or focused line ranges over whole
@@ -324,5 +325,9 @@ Rules:
 - Order items so a developer can understand the codebase progressively.
 - Avoid generated files, lockfiles, vendored code, and minified files.
 - Include short labels explaining why each item matters.
+
+If the user explicitly asks for full files (no clipping) instead of a
+navigation tour: set top-level "clip": "off" and omit startLine/endLine
+on items. The resolver will then type each file or symbol in full.
 `;
 }
