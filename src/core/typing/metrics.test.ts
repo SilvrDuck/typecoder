@@ -121,16 +121,15 @@ describe("metrics", () => {
   });
 
   it("backspace over smart-skip restores freeChars exactly", () => {
-    // Backspacing over the boundary space (real keystroke) must NOT
-    // decrement freeChars; only backspacing over missed-filler positions does.
+    // A single plain backspace atomically undoes the entire smart-skip block
+    // (boundary space + missed filler), restoring freeChars to 0.
     let s = startTyping("foo bar");
     s = applyKey(s, "f", { now: 1000 }); // enter "foo"
     s = applyKey(s, " ", { now: 1000 }); // smart-skip → freeChars=2
     expect(s.freeChars).toBe(2);
-    s = applyKey(s, "Backspace", { now: 1100 }); // removes the boundary space
-    expect(s.freeChars).toBe(2); // unchanged — space was a real keystroke
-    s = applyKey(s, "Backspace", { now: 1200 }); // removes missed 'o' at idx 2
-    expect(s.freeChars).toBe(1);
+    s = applyKey(s, "Backspace", { now: 1100 }); // atomically undoes space + missed 'oo'
+    expect(s.freeChars).toBe(0);
+    expect(s.cursor).toBe(1);
   });
 
   it("counts boundary extras as keystrokes and uncorrected mistakes", () => {

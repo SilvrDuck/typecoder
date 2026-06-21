@@ -326,19 +326,24 @@ describe("typingEngine — smart space", () => {
     expect(s.missedIndices.size).toBe(0);
   });
 
+  it("single backspace undoes entire smart-skip atomically", () => {
+    let s = startTyping("foo bar");
+    s = applyKey(s, "f", { now: 1 });
+    s = applyKey(s, " ", { now: 2 }); // smart-skip; missed at 1,2; cursor=4
+    expect(s.freeChars).toBe(2);
+    s = applyKey(s, "Backspace", { now: 3 }); // should undo space + missed chars in one go
+    expect(s.cursor).toBe(1);
+    expect(s.input).toBe("f");
+    expect(s.missedIndices.size).toBe(0);
+    expect(s.freeChars).toBe(0);
+  });
+
   it("backspace clears missed flags so retyping scores normally", () => {
     let s = startTyping("foo bar");
     s = applyKey(s, "f", { now: 1 });
     s = applyKey(s, " ", { now: 2 }); // smart-skip; missed at 1,2; cursor=4
-    expect(s.freeChars).toBe(2); // 2 missed are free; boundary space isn't
-    s = applyKey(s, "Backspace", { now: 3 }); // remove the ' ' at index 3
-    expect(s.cursor).toBe(3);
-    expect(s.freeChars).toBe(2); // still 2 — boundary space wasn't free
-    expect(s.missedIndices.has(1)).toBe(true);
-    expect(s.missedIndices.has(3)).toBe(false);
-    s = applyKey(s, "Backspace", { now: 4 });
-    s = applyKey(s, "Backspace", { now: 5 });
-    s = applyKey(s, "Backspace", { now: 6 });
+    s = applyKey(s, "Backspace", { now: 3 }); // atomic undo: cursor→1
+    s = applyKey(s, "Backspace", { now: 4 }); // remove 'f'
     expect(s.cursor).toBe(0);
     expect(s.missedIndices.size).toBe(0);
     expect(s.freeChars).toBe(0);

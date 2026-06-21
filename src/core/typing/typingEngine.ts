@@ -471,6 +471,13 @@ function handleBackspace(state: TypingState, meta: KeyMeta): TypingState {
   let removeTo = state.cursor - 1;
   if (word) removeTo = findWordStart(state.input, state.cursor);
   else if (token) removeTo = findTokenStart(state.input, state.cursor);
+  else {
+    // Plain backspace: if we'd land immediately after a missed-char block
+    // (smart-skip residue), undo the whole block atomically.
+    while (removeTo > 0 && state.missedIndices.has(removeTo - 1)) {
+      removeTo--;
+    }
+  }
 
   const corrections = state.mistakes.filter(
     (m) => m.index >= removeTo && m.index < state.cursor,
