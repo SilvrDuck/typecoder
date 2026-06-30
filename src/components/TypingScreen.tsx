@@ -105,9 +105,9 @@ export function TypingScreen() {
     endLine: item.endLine,
   });
 
-  function handleComplete() {
+  const handleComplete = useCallback(() => {
     setShowCompletion(true);
-  }
+  }, []);
 
   function handleRestart() {
     restartCurrentItem();

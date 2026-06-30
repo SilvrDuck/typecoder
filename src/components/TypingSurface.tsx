@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   applyKey,
   charStatuses,
@@ -139,48 +139,17 @@ export function TypingSurface({ state, onChange, onComplete, disabled, path }: P
   );
 }
 
-function renderChars(
-  target: string,
-  input: string,
-  statuses: CharStatus[],
-  extras: Map<number, string>,
-  tokenColors: TokenColorMap,
-): React.ReactNode[] {
-  const nodes: React.ReactNode[] = [];
-  const n = Math.max(target.length, input.length);
-  for (let i = 0; i < n; i++) {
-    const extra = extras.get(i);
-    if (extra) {
-      for (let k = 0; k < extra.length; k++) {
-        nodes.push(<ExtraGlyph key={`x-${i}-${k}`} ch={extra[k]} />);
-      }
-    }
-    nodes.push(
-      <Char
-        key={i}
-        index={i}
-        expected={target[i]}
-        typed={input[i]}
-        status={statuses[i]}
-        caret={i === input.length}
-        tokenColor={tokenColors[i] ?? ""}
-      />,
-    );
-  }
-  return nodes;
-}
-
 /** A red typed-char glyph rendered inline at a whitespace boundary. */
-function ExtraGlyph({ ch }: { ch: string }) {
+const ExtraGlyph = memo(function ExtraGlyph({ ch }: { ch: string }) {
   const glyph = whitespaceGlyph(ch);
   return (
     <span data-status="extra" className={colorClass("extra")}>
       {glyph ?? ch}
     </span>
   );
-}
+});
 
-function Char({
+const Char = memo(function Char({
   index,
   expected,
   typed,
@@ -212,6 +181,37 @@ function Char({
       {renderCell(expected, typed, status)}
     </span>
   );
+});
+
+function renderChars(
+  target: string,
+  input: string,
+  statuses: CharStatus[],
+  extras: Map<number, string>,
+  tokenColors: TokenColorMap,
+): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  const n = Math.max(target.length, input.length);
+  for (let i = 0; i < n; i++) {
+    const extra = extras.get(i);
+    if (extra) {
+      for (let k = 0; k < extra.length; k++) {
+        nodes.push(<ExtraGlyph key={`x-${i}-${k}`} ch={extra[k]} />);
+      }
+    }
+    nodes.push(
+      <Char
+        key={i}
+        index={i}
+        expected={target[i]}
+        typed={input[i]}
+        status={statuses[i]}
+        caret={i === input.length}
+        tokenColor={tokenColors[i] ?? ""}
+      />,
+    );
+  }
+  return nodes;
 }
 
 function Caret() {
